@@ -18,6 +18,7 @@ import TuringMachines.Normalize (getProgram, normalize)
 import TuringMachines.Numbering
 import qualified TuringMachines.PPrint as PP
 import qualified TuringMachines.Parser as TP
+import Utils.QString
 
 data Options
   = Numbered Integer
@@ -130,12 +131,6 @@ processInfo t =
       putStrLn $
         unwords . zipWith (\prime n -> fmt $ prime |+ "^" +| n |+ "") primes $
           programAsSequence normalized
-
--- Print the program as states prefixed with 'q'
-newtype QString = QString Integer deriving (Eq, Ord)
-
-instance Show QString where
-  show (QString i) = "q" ++ show i
 
 programAsStr :: Program Integer -> String
 programAsStr = unpack . PP.pprint . mapProgram QString

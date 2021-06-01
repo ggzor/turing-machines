@@ -60,6 +60,8 @@ common shared-properties
     TypeFamilies
     TypeFamilyDependencies
 
+    QuasiQuotes
+
 library
   import:              shared-properties
   hs-source-dirs:      src
@@ -72,8 +74,14 @@ library
     TuringMachines.Parser
     TuringMachines.PPrint
     TuringMachines.Show
+    Utils.QString
     Math.Primes
-  build-depends:       base, containers, text
+  build-depends:
+      base
+    , containers
+    , fmt
+    , mtl
+    , text
 
 executable turing-machines
   import:              shared-properties
@@ -94,6 +102,12 @@ test-suite turing-machines-test
   import:              shared-properties
   hs-source-dirs:      test
   main-is:             Spec.hs
-  build-depends:       turing-machines, base, containers, hspec
+  build-depends:
+      turing-machines
+    , base
+    , containers
+    , hspec
+    , raw-strings-qq
+    , text
   type:                exitcode-stdio-1.0
 

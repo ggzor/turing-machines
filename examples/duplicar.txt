@@ -1,0 +1,14 @@
+--    0    1
+q1:   _   Lq2
+q2:  Lq3  Lq3
+q3:  1q3  Lq4
+q4:  1q4  Rq5
+q5:  Rq6  Rq5
+q6:  Lq7  Rq6
+q7:  Lq8  0q7
+q8:  Lq11 Lq9
+q9:  Lq10 Lq9
+q10: Rq2  Lq10
+q11: Rq12 Lq11
+q12: _    _
+

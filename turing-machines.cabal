@@ -1,0 +1,99 @@
+cabal-version:       2.4
+
+name:                turing-machines
+version:             0.1.0.0
+license:             BSD-3-Clause
+license-file:        LICENSE
+author:              ggzor
+maintainer:          30713864+ggzor@users.noreply.github.com
+build-type:          Simple
+
+common shared-properties
+  default-language:    Haskell2010
+  ghc-options:
+    -Wall
+    -Wcompat
+    -Wincomplete-record-updates
+    -Wincomplete-uni-patterns
+    -Wredundant-constraints
+  default-extensions:
+    EmptyCase
+    FlexibleContexts
+    FlexibleInstances
+    InstanceSigs
+    MultiParamTypeClasses
+
+    LambdaCase
+    MultiWayIf
+    NamedFieldPuns
+    TupleSections
+
+    DeriveFoldable
+    DeriveFunctor
+    DeriveGeneric
+    DeriveLift
+    DeriveTraversable
+    DerivingStrategies
+    GeneralizedNewtypeDeriving
+    StandaloneDeriving
+
+    BangPatterns
+    KindSignatures
+    TypeOperators
+
+    OverloadedStrings
+
+    ScopedTypeVariables
+    TypeApplications
+
+    ConstraintKinds
+    RankNTypes
+
+    DefaultSignatures
+    PatternSynonyms
+
+    ExistentialQuantification
+    FunctionalDependencies
+    GADTs
+
+    DataKinds
+    TypeFamilies
+    TypeFamilyDependencies
+
+library
+  import:              shared-properties
+  hs-source-dirs:      src
+  exposed-modules:
+    Data.List.Utils
+    TuringMachines.Core
+    TuringMachines.Eval
+    TuringMachines.Numbering
+    TuringMachines.Normalize
+    TuringMachines.Parser
+    TuringMachines.PPrint
+    TuringMachines.Show
+    Math.Primes
+  build-depends:       base, containers, text
+
+executable turing-machines
+  import:              shared-properties
+  hs-source-dirs:      app
+  main-is:             Main.hs
+  build-depends:
+      turing-machines
+    , ansi-terminal
+    , base
+    , containers
+    , directory
+    , fmt
+    , optparse-applicative
+    , rio
+    , text
+
+test-suite turing-machines-test
+  import:              shared-properties
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       turing-machines, base, containers, hspec
+  type:                exitcode-stdio-1.0
+

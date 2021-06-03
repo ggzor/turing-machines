@@ -11,8 +11,8 @@ instance Show Bit where
 deriving instance Show Dir
 
 instance Show Action where
-  show (SetTo B0) = "S0"
-  show (SetTo B1) = "S1"
+  show (SetTo B0) = "0"
+  show (SetTo B1) = "1"
   show (MoveTo L) = "L"
   show (MoveTo R) = "R"
 

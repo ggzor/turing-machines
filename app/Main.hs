@@ -17,6 +17,7 @@ import System.Exit (exitFailure)
 import System.IO (hFlush, stdout)
 import TuringMachines.Core
 import TuringMachines.Eval (eval, readTape)
+import TuringMachines.Graphviz
 import TuringMachines.Normalize (getProgram, normalize)
 import TuringMachines.Numbering
 import qualified TuringMachines.PPrint as PP
@@ -28,7 +29,7 @@ data EvalOptions = EvalOptions
     lineByLine :: !Bool
   }
 
-data FormatOption = Original | Normalized | Number | PrimeSeq
+data FormatOption = Original | Normalized | Number | PrimeSeq | Graph
   deriving (Ord, Eq, Show)
 
 data InfoOptions = InfoOptions
@@ -69,6 +70,7 @@ infoOptions =
                         ++ ", n = Programa normalizado"
                         ++ ", u = Numero de Godel"
                         ++ ", s = Sequencia de primos"
+                        ++ ", g = Grafo"
                     )
               )
         )
@@ -81,6 +83,7 @@ parseFormatOption 'o' = Right Original
 parseFormatOption 'n' = Right Normalized
 parseFormatOption 'u' = Right Number
 parseFormatOption 's' = Right PrimeSeq
+parseFormatOption 'g' = Right Graph
 parseFormatOption c = Left $ "Formato desconocido: " ++ [c]
 
 evalOptions :: Parser Options
@@ -185,21 +188,28 @@ processInfo InfoOptions {format} t =
     Just p -> do
       let label = if length format > 1 then putStrLn else void . pure
       let normalized = normalize p
-      forM_ format $ \case
-        Original -> do
-          label "Original: "
-          putStrLn $ programAsStr p
-        Normalized -> do
-          label "Normalizado: "
-          putStrLn $ programAsStr (getProgram normalized)
-        Number -> do
-          label "Numero de Godel:"
-          print $ programAsNumber normalized
-        PrimeSeq -> do
-          label "Secuencia de potencias de primos: "
-          putStrLn $
-            unwords . zipWith (\prime n -> fmt $ prime |+ "^" +| n |+ "") primes $
-              programAsSequence normalized
+
+      if format == [Normalized, Graph]
+        then fmtLn $ generateGraph (getProgram normalized) |+ ""
+        else do
+          forM_ format $ \case
+            Original -> do
+              label "Original: "
+              putStrLn $ programAsStr p
+            Normalized -> do
+              label "Normalizado: "
+              putStrLn $ programAsStr (getProgram normalized)
+            Number -> do
+              label "Numero de Godel:"
+              print $ programAsNumber normalized
+            PrimeSeq -> do
+              label "Secuencia de potencias de primos: "
+              putStrLn $
+                unwords . zipWith (\prime n -> fmt $ prime |+ "^" +| n |+ "") primes $
+                  programAsSequence normalized
+            Graph -> do
+              label "Grafo: "
+              fmtLn $ generateGraph p |+ ""
 
 programAsStr :: Program Integer -> String
 programAsStr = unpack . PP.pprint . mapProgram QString

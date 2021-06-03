@@ -69,10 +69,12 @@ library
     Data.List.Utils
     TuringMachines.Core
     TuringMachines.Eval
+    TuringMachines.Graphviz
     TuringMachines.Numbering
     TuringMachines.Normalize
     TuringMachines.Parser
     TuringMachines.PPrint
+    TuringMachines.Quads
     TuringMachines.Show
     Utils.QString
     Math.Primes
@@ -81,6 +83,7 @@ library
     , containers
     , fmt
     , mtl
+    , raw-strings-qq
     , text
 
 executable turing-machines

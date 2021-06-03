@@ -167,7 +167,7 @@ pprintState program (State q idx tape) = do
       minIdx = maybe idx fst (IntMap.lookupMin tape)
       maxIdx = maybe idx fst (IntMap.lookupMax tape)
   fmt $ padRightF (maxStateLength + 3) ' ' (("<q" +| q |+ ">") :: Text) |+ " " +| tapeInterval minIdx idx |+ ""
-  setSGR [SetSwapForegroundBackground True]
+  setSGR [SetUnderlining SingleUnderline, SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
   putChar . bitToStr $ readTape idx tape
   setSGR [Reset]
   putStrLn $ tapeInterval (idx + 1) (maxIdx + 1)

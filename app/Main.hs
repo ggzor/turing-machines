@@ -1,5 +1,6 @@
 module Main where
 
+import Control.Monad (void)
 import Data.Function ((&))
 import qualified Data.IntMap.Strict as IntMap
 import qualified Data.Map.Strict as M
@@ -12,6 +13,7 @@ import RIO.Directory (doesFileExist)
 import RIO.Text (Text, pack, unpack)
 import System.Console.ANSI
 import System.Exit (exitFailure)
+import System.IO (hFlush, stdout)
 import TuringMachines.Core
 import TuringMachines.Eval (eval, readTape)
 import TuringMachines.Normalize (getProgram, normalize)
@@ -21,7 +23,8 @@ import qualified TuringMachines.Parser as TP
 import Utils.QString
 
 data EvalOptions = EvalOptions
-  { doNotEvalSpeculatively :: !Bool
+  { doNotEvalSpeculatively :: !Bool,
+    lineByLine :: !Bool
   }
 
 data Options
@@ -58,6 +61,10 @@ evalOptions =
                         ++ "Provoca una salida menos agradable pero al menos muestra salida"
                     )
               )
+            <*> switch
+              ( short 'l'
+                  <> help "Evaluar linea por linea"
+              )
         )
 
 fileArgument :: Parser FilePath
@@ -81,7 +88,7 @@ exitError message = do
 doWork :: Options -> IO ()
 doWork (Numbered n) = processNumbered n
 doWork (Info path) = withExistentFile path processInfo
-doWork (Eval path input EvalOptions {doNotEvalSpeculatively}) = withExistentFile path $ \pathText -> do
+doWork (Eval path input opts@EvalOptions {doNotEvalSpeculatively}) = withExistentFile path $ \pathText -> do
   case TP.parse pathText of
     Just program ->
       let (minIdx, maxIdx) = dangerouslyDetermineBounds program (State 1 0 input)
@@ -94,7 +101,7 @@ doWork (Eval path input EvalOptions {doNotEvalSpeculatively}) = withExistentFile
               if doNotEvalSpeculatively
                 then input
                 else adjustedTape
-       in processEval program initialState
+       in processEval opts program initialState
     Nothing -> exitError "El programa no es valido"
 
 dangerouslyDetermineBounds :: forall a. (Ord a) => Program a -> State a -> (Index, Index)
@@ -153,13 +160,16 @@ processInfo t =
 programAsStr :: Program Integer -> String
 programAsStr = unpack . PP.pprint . mapProgram QString
 
-processEval :: Program Integer -> State Integer -> IO ()
-processEval program state = do
+processEval :: EvalOptions -> Program Integer -> State Integer -> IO ()
+processEval opts@EvalOptions {lineByLine} program state = do
   pprintState program state
+  if lineByLine
+    then hFlush stdout >> void getLine
+    else putStrLn ""
   let newState = eval program state
   case newState of
     Nothing -> pure ()
-    Just st -> processEval program st
+    Just st -> processEval opts program st
 
 pprintState :: Program Integer -> State Integer -> IO ()
 pprintState program (State q idx tape) = do
@@ -170,7 +180,7 @@ pprintState program (State q idx tape) = do
   setSGR [SetUnderlining SingleUnderline, SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
   putChar . bitToStr $ readTape idx tape
   setSGR [Reset]
-  putStrLn $ tapeInterval (idx + 1) (maxIdx + 1)
+  putStr $ tapeInterval (idx + 1) (maxIdx + 1)
   where
     tapeInterval :: Index -> Index -> String
     tapeInterval start end = bitToStr . flip readTape tape <$> [start .. end - 1]

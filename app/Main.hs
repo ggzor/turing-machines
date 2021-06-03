@@ -20,17 +20,21 @@ import qualified TuringMachines.PPrint as PP
 import qualified TuringMachines.Parser as TP
 import Utils.QString
 
+data EvalOptions = EvalOptions
+  { doNotEvalSpeculatively :: !Bool
+  }
+
 data Options
-  = Numbered Integer
-  | Info FilePath
-  | Eval FilePath Tape
+  = Numbered !Integer
+  | Info !FilePath
+  | Eval !FilePath !Tape !EvalOptions
 
 options :: Parser Options
 options =
   subparser
     ( command "numbered" (info numberedOptions (progDesc "Muestra el programa correspondiente al numero dado"))
         <> command "info" (info infoOptions (progDesc "Muestra información relevante del programa dado"))
-        <> command "eval" (info evalOptions (progDesc "Evalua el programa con la entrada dada"))
+        <> command "eval" (info (evalOptions <**> helper) (progDesc "Evalua el programa con la entrada dada"))
     )
 
 numberedOptions :: Parser Options
@@ -46,6 +50,15 @@ evalOptions =
     <*> argument
       (maybeReader (TP.parseTape . pack))
       (metavar "INPUT" <> help "La entrada binaria para el programa")
+    <*> ( EvalOptions
+            <$> switch
+              ( short 'n'
+                  <> help
+                    ( "No evaluar especulativamente: "
+                        ++ "Provoca una salida menos agradable pero al menos muestra salida"
+                    )
+              )
+        )
 
 fileArgument :: Parser FilePath
 fileArgument = argument str (metavar "FILE" <> help "El archivo que contiene el programa")
@@ -68,15 +81,20 @@ exitError message = do
 doWork :: Options -> IO ()
 doWork (Numbered n) = processNumbered n
 doWork (Info path) = withExistentFile path processInfo
-doWork (Eval path input) = withExistentFile path $ \pathText -> do
+doWork (Eval path input EvalOptions {doNotEvalSpeculatively}) = withExistentFile path $ \pathText -> do
   case TP.parse pathText of
     Just program ->
       let (minIdx, maxIdx) = dangerouslyDetermineBounds program (State 1 0 input)
-          initialTape =
+          adjustedTape =
             input
               & IntMap.insert minIdx (fromMaybe B0 (IntMap.lookup minIdx input))
               & IntMap.insert maxIdx (fromMaybe B0 (IntMap.lookup maxIdx input))
-       in processEval program (State 1 0 initialTape)
+          initialState =
+            State 1 0 $
+              if doNotEvalSpeculatively
+                then input
+                else adjustedTape
+       in processEval program initialState
     Nothing -> exitError "El programa no es valido"
 
 dangerouslyDetermineBounds :: forall a. (Ord a) => Program a -> State a -> (Index, Index)

@@ -1,11 +1,12 @@
 module Main where
 
-import Control.Monad (void)
+import Control.Monad (forM_, void)
 import Data.Function ((&))
 import qualified Data.IntMap.Strict as IntMap
+import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
-import Fmt
+import Fmt (Builder, fmt, fmtLn, padRightF, (+|), (|+))
 import Math.Primes (primes)
 import Options.Applicative hiding (action)
 import RIO (readFileUtf8)
@@ -27,16 +28,23 @@ data EvalOptions = EvalOptions
     lineByLine :: !Bool
   }
 
+data FormatOption = Original | Normalized | Number | PrimeSeq
+  deriving (Ord, Eq, Show)
+
+data InfoOptions = InfoOptions
+  { format :: [FormatOption]
+  }
+
 data Options
   = Numbered !Integer
-  | Info !FilePath
+  | Info !FilePath !InfoOptions
   | Eval !FilePath !Tape !EvalOptions
 
 options :: Parser Options
 options =
   subparser
     ( command "numbered" (info numberedOptions (progDesc "Muestra el programa correspondiente al numero dado"))
-        <> command "info" (info infoOptions (progDesc "Muestra información relevante del programa dado"))
+        <> command "info" (info (infoOptions <**> helper) (progDesc "Muestra información relevante del programa dado"))
         <> command "eval" (info (evalOptions <**> helper) (progDesc "Evalua el programa con la entrada dada"))
     )
 
@@ -45,7 +53,35 @@ numberedOptions =
   Numbered <$> argument auto (metavar "N" <> help "El numero del programa a mostrar")
 
 infoOptions :: Parser Options
-infoOptions = Info <$> fileArgument
+infoOptions =
+  Info
+    <$> fileArgument
+    <*> ( InfoOptions
+            <$> option
+              (eitherReader parseFormatOptionList)
+              ( short 'f'
+                  <> long "format"
+                  <> metavar "FORMAT"
+                  <> value [Original, Normalized, Number, PrimeSeq]
+                  <> help
+                    ( "Formatos disponibles:"
+                        ++ " o = Programa original"
+                        ++ ", n = Programa normalizado"
+                        ++ ", u = Numero de Godel"
+                        ++ ", s = Sequencia de primos"
+                    )
+              )
+        )
+
+parseFormatOptionList :: String -> Either String [FormatOption]
+parseFormatOptionList = fmap L.nub . traverse parseFormatOption
+
+parseFormatOption :: Char -> Either String FormatOption
+parseFormatOption 'o' = Right Original
+parseFormatOption 'n' = Right Normalized
+parseFormatOption 'u' = Right Number
+parseFormatOption 's' = Right PrimeSeq
+parseFormatOption c = Left $ "Formato desconocido: " ++ [c]
 
 evalOptions :: Parser Options
 evalOptions =
@@ -87,7 +123,7 @@ exitError message = do
 
 doWork :: Options -> IO ()
 doWork (Numbered n) = processNumbered n
-doWork (Info path) = withExistentFile path processInfo
+doWork (Info path opts) = withExistentFile path (processInfo opts)
 doWork (Eval path input opts@EvalOptions {doNotEvalSpeculatively}) = withExistentFile path $ \pathText -> do
   case TP.parse pathText of
     Just program ->
@@ -142,20 +178,28 @@ printNormalizedIfDifferent p
   where
     norm = getProgram . normalize $ p
 
-processInfo :: Text -> IO ()
-processInfo t =
+processInfo :: InfoOptions -> Text -> IO ()
+processInfo InfoOptions {format} t =
   case TP.parse t of
     Nothing -> putStrLn "El programa no es valido"
     Just p -> do
-      putStrLn "Original: "
-      putStrLn $ programAsStr p
-      printNormalizedIfDifferent p
+      let label = if length format > 1 then putStrLn else void . pure
       let normalized = normalize p
-      fmtLn $ "Numero: " +| programAsNumber normalized |+ ""
-      putStrLn "Sequencia de potencias de primos: "
-      putStrLn $
-        unwords . zipWith (\prime n -> fmt $ prime |+ "^" +| n |+ "") primes $
-          programAsSequence normalized
+      forM_ format $ \case
+        Original -> do
+          label "Original: "
+          putStrLn $ programAsStr p
+        Normalized -> do
+          label "Normalizado: "
+          putStrLn $ programAsStr (getProgram normalized)
+        Number -> do
+          label "Numero de Godel:"
+          print $ programAsNumber normalized
+        PrimeSeq -> do
+          label "Secuencia de potencias de primos: "
+          putStrLn $
+            unwords . zipWith (\prime n -> fmt $ prime |+ "^" +| n |+ "") primes $
+              programAsSequence normalized
 
 programAsStr :: Program Integer -> String
 programAsStr = unpack . PP.pprint . mapProgram QString

@@ -1,6 +1,7 @@
 module Main where
 
 import Control.Monad (forM_, void)
+import Data.Foldable (find)
 import Data.Function ((&))
 import qualified Data.IntMap.Strict as IntMap
 import qualified Data.List as L
@@ -12,6 +13,7 @@ import Math.Primes (primes)
 import Options.Applicative hiding (action)
 import RIO (readFileUtf8)
 import RIO.Directory (doesFileExist)
+import RIO.Prelude (readMaybe)
 import RIO.Text (Text, pack, unpack)
 import System.Console.ANSI
 import System.Exit (exitFailure)
@@ -26,7 +28,8 @@ import Utils.QString
 
 data EvalOptions = EvalOptions
   { doNotEvalSpeculatively :: !Bool,
-    lineByLine :: !Bool
+    lineByLine :: !Bool,
+    limitSteps :: Maybe Integer
   }
 
 data FormatOption = Original | Normalized | Number | PrimeSeq | Graph
@@ -104,6 +107,22 @@ evalOptions =
               ( short 'l'
                   <> help "Evaluar linea por linea"
               )
+            <*> optional
+              ( option
+                  ( eitherReader
+                      ( maybe
+                          (Left "Debe ser un entero mayor o igual a cero")
+                          Right
+                          . find (>= 0)
+                          . readMaybe
+                      )
+                  )
+                  ( short 's'
+                      <> long "steps"
+                      <> metavar "N"
+                      <> help "La cantidad de pasos por ejecutar"
+                  )
+              )
         )
 
 fileArgument :: Parser FilePath
@@ -140,7 +159,7 @@ doWork (Eval path input opts@EvalOptions {doNotEvalSpeculatively}) = withExisten
               if doNotEvalSpeculatively
                 then input
                 else adjustedTape
-       in processEval opts program initialState
+       in processEval 0 opts program initialState
     Nothing -> exitError "El programa no es valido"
 
 dangerouslyDetermineBounds :: forall a. (Ord a) => Program a -> State a -> (Index, Index)
@@ -214,16 +233,19 @@ processInfo InfoOptions {format} t =
 programAsStr :: Program Integer -> String
 programAsStr = unpack . PP.pprint . mapProgram QString
 
-processEval :: EvalOptions -> Program Integer -> State Integer -> IO ()
-processEval opts@EvalOptions {lineByLine} program state = do
+processEval :: Integer -> EvalOptions -> Program Integer -> State Integer -> IO ()
+processEval currentSteps opts@EvalOptions {lineByLine, limitSteps} program state = do
   pprintState program state
   if lineByLine
     then hFlush stdout >> void getLine
     else putStrLn ""
-  let newState = eval program state
-  case newState of
-    Nothing -> pure ()
-    Just st -> processEval opts program st
+  if maybe False (currentSteps >=) limitSteps
+    then pure ()
+    else do
+      let newState = eval program state
+      case newState of
+        Nothing -> pure ()
+        Just st -> processEval (currentSteps + 1) opts program st
 
 pprintState :: Program Integer -> State Integer -> IO ()
 pprintState program (State q idx tape) = do

@@ -69,7 +69,6 @@ library
     Data.List.Utils
     TuringMachines.Core
     TuringMachines.Eval
-    TuringMachines.Graphviz
     TuringMachines.Numbering
     TuringMachines.Normalize
     TuringMachines.Parser
@@ -82,14 +81,14 @@ library
       base
     , containers
     , fmt
-    , mtl
-    , raw-strings-qq
     , text
 
 executable turing-machines
   import:              shared-properties
   hs-source-dirs:      app
   main-is:             Main.hs
+  other-modules:
+    Graphviz
   build-depends:
       turing-machines
     , ansi-terminal
@@ -98,6 +97,7 @@ executable turing-machines
     , directory
     , fmt
     , optparse-applicative
+    , raw-strings-qq
     , rio
     , text
 

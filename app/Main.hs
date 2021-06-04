@@ -7,6 +7,7 @@ import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import Fmt (Builder, fmt, fmtLn, padRightF, (+|), (|+))
+import Graphviz
 import Math.Primes (primes)
 import Options.Applicative hiding (action)
 import RIO (readFileUtf8)
@@ -17,7 +18,6 @@ import System.Exit (exitFailure)
 import System.IO (hFlush, stdout)
 import TuringMachines.Core
 import TuringMachines.Eval (eval, readTape)
-import TuringMachines.Graphviz
 import TuringMachines.Normalize (getProgram, normalize)
 import TuringMachines.Numbering
 import qualified TuringMachines.PPrint as PP

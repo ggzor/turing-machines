@@ -1,4 +1,4 @@
-module TuringMachines.Graphviz where
+module Graphviz where
 
 import qualified Data.Text as T
 import Fmt

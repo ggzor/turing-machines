@@ -69,6 +69,7 @@ library
     Data.List.Utils
     TuringMachines.Core
     TuringMachines.Eval
+    TuringMachines.Graphviz
     TuringMachines.Numbering
     TuringMachines.Normalize
     TuringMachines.Parser
@@ -81,6 +82,7 @@ library
       base
     , containers
     , fmt
+    , string-interpolate
     , text
 
 executable turing-machines
@@ -105,6 +107,7 @@ test-suite turing-machines-test
   import:              shared-properties
   hs-source-dirs:      test
   main-is:             Spec.hs
+  other-modules:       Utils
   build-depends:
       turing-machines
     , base

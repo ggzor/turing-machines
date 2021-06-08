@@ -1,11 +1,11 @@
 module TuringMachines.PPrintSpec where
 
 import qualified Data.Map.Strict as M
-import qualified Data.Text as T
 import Test.Hspec as H
 import Text.RawString.QQ
 import TuringMachines.Core
 import TuringMachines.PPrint
+import Utils
 import Utils.QString
 
 spec :: H.Spec
@@ -86,5 +86,3 @@ q1 0q10 1q10
 q2 Lq3  Rq3
 q3  _    _
 |]
-  where
-    skipFirstLine = T.unlines . tail . T.lines

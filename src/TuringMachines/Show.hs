@@ -21,3 +21,5 @@ instance Show a => Show (Transition a) where
   show Halt = "_"
 
 deriving instance Show a => Show (State a)
+
+deriving instance Show a => Show (Spec a)

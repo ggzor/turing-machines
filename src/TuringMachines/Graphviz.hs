@@ -24,7 +24,7 @@ generateStatefulGraph program (State q idx tape) =
         case quad of
           (src, tgtBit, _, _)
             | src == q && tgtBit == bit ->
-              (M.fromAscList [("style", "bold"), ("color", "red4")], quad)
+              (M.fromAscList [("style", "bold")], quad)
           _ -> (M.empty, quad)
    in fillBaseTemplate $
         T.append

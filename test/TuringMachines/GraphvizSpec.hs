@@ -38,7 +38,7 @@ digraph TuringMachine {
 
   1 -> 1 [label="0:1"]
   1 -> 2 [label="1:0"]
-  2 -> 2 [label="0:L", style=bold, color=red4]
+  2 -> 2 [label="0:L", style=bold]
   2 -> 3 [label="1:R"]
 
   2 [style=filled]

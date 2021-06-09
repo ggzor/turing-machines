@@ -91,6 +91,10 @@ executable turing-machines
   main-is:             Main.hs
   other-modules:
       Parser
+    , Commands.Numbered
+    , Commands.Eval
+    , Commands.Info
+    , Utils
   build-depends:
       turing-machines
     , ansi-terminal

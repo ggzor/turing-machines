@@ -89,8 +89,6 @@ executable turing-machines
   import:              shared-properties
   hs-source-dirs:      app
   main-is:             Main.hs
-  other-modules:
-    Graphviz
   build-depends:
       turing-machines
     , ansi-terminal
@@ -101,7 +99,12 @@ executable turing-machines
     , optparse-applicative
     , raw-strings-qq
     , rio
+    , string-interpolate
+    , temporary
     , text
+    , typed-process
+    , xml-conduit
+    , xml-lens
 
 test-suite turing-machines-test
   import:              shared-properties

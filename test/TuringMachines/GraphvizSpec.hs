@@ -14,7 +14,7 @@ spec = do
   describe "generateGraph" $ do
     it "should generate simple graph for program" $
       generateGraph simpleProgram
-        `shouldBe` skipFirstLastLine
+        `shouldBe` skipFirstLine
           [r|
 digraph TuringMachine {
   rankdir="LR"
@@ -30,7 +30,7 @@ digraph TuringMachine {
       generateStatefulGraph
         simpleProgram
         (State 2 0 (IntMap.fromAscList [(0, B0)]))
-        `shouldBe` skipFirstLastLine
+        `shouldBe` skipFirstLine
           [r|
 digraph TuringMachine {
   rankdir="LR"

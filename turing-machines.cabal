@@ -89,6 +89,8 @@ executable turing-machines
   import:              shared-properties
   hs-source-dirs:      app
   main-is:             Main.hs
+  other-modules:
+      Parser
   build-depends:
       turing-machines
     , ansi-terminal

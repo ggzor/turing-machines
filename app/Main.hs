@@ -2,20 +2,18 @@ module Main where
 
 import Control.Monad (forM_, void)
 import Data.Either (fromRight)
-import Data.Foldable (find)
 import Data.Function ((&))
 import qualified Data.IntMap.Strict as IntMap
-import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Maybe (fromMaybe)
 import Data.String.Interpolate
 import Data.Text (splitOn)
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import qualified Data.Text.Lazy as TL
 import Fmt (Builder, fmt, fmtLn, padRightF, (+|), (|+))
 import Math.Primes (primes)
 import Options.Applicative hiding (action)
+import Parser
 import RIO (encodeUtf8, readFileUtf8, toStrictBytes, view, (%~), (.~), (^.))
 import RIO.ByteString.Lazy (fromStrict)
 import RIO.Directory (doesFileExist)
@@ -37,108 +35,6 @@ import qualified TuringMachines.PPrint as PP
 import qualified TuringMachines.Parser as TP
 import Utils.QString
 
-data EvalOptions = EvalOptions
-  { doNotEvalSpeculatively :: !Bool,
-    lineByLine :: !Bool,
-    limitSteps :: Maybe Integer
-  }
-
-data FormatOption = Original | Normalized | Number | PrimeSeq | Graph
-  deriving (Ord, Eq, Show)
-
-data InfoOptions = InfoOptions
-  { format :: [FormatOption]
-  }
-
-data Options
-  = Numbered !Integer
-  | Info !FilePath !InfoOptions
-  | Eval !FilePath !Tape !EvalOptions
-
-options :: Parser Options
-options =
-  subparser
-    ( command "numbered" (info numberedOptions (progDesc "Muestra el programa correspondiente al numero dado"))
-        <> command "info" (info (infoOptions <**> helper) (progDesc "Muestra información relevante del programa dado"))
-        <> command "eval" (info (evalOptions <**> helper) (progDesc "Evalua el programa con la entrada dada"))
-    )
-
-numberedOptions :: Parser Options
-numberedOptions =
-  Numbered <$> argument auto (metavar "N" <> help "El numero del programa a mostrar")
-
-infoOptions :: Parser Options
-infoOptions =
-  Info
-    <$> fileArgument
-    <*> ( InfoOptions
-            <$> option
-              (eitherReader parseFormatOptionList)
-              ( short 'f'
-                  <> long "format"
-                  <> metavar "FORMAT"
-                  <> value [Original, Normalized, Number, PrimeSeq]
-                  <> help
-                    ( "Formatos disponibles:"
-                        ++ " o = Programa original"
-                        ++ ", n = Programa normalizado"
-                        ++ ", u = Numero de Godel"
-                        ++ ", s = Sequencia de primos"
-                        ++ ", g = Grafo"
-                    )
-              )
-        )
-
-parseFormatOptionList :: String -> Either String [FormatOption]
-parseFormatOptionList = fmap L.nub . traverse parseFormatOption
-
-parseFormatOption :: Char -> Either String FormatOption
-parseFormatOption 'o' = Right Original
-parseFormatOption 'n' = Right Normalized
-parseFormatOption 'u' = Right Number
-parseFormatOption 's' = Right PrimeSeq
-parseFormatOption 'g' = Right Graph
-parseFormatOption c = Left $ "Formato desconocido: " ++ [c]
-
-evalOptions :: Parser Options
-evalOptions =
-  Eval <$> fileArgument
-    <*> argument
-      (maybeReader (TP.parseTape . pack))
-      (metavar "INPUT" <> help "La entrada binaria para el programa")
-    <*> ( EvalOptions
-            <$> switch
-              ( short 'n'
-                  <> help
-                    ( "No evaluar especulativamente: "
-                        ++ "Provoca una salida menos agradable pero al menos muestra salida"
-                    )
-              )
-            <*> switch
-              ( short 'l'
-                  <> help "Evaluar linea por linea"
-              )
-            <*> optional
-              ( option
-                  ( eitherReader
-                      ( maybe
-                          (Left "Debe ser un entero mayor o igual a cero")
-                          Right
-                          . find (>= 0)
-                          . readMaybe
-                      )
-                  )
-                  ( short 's'
-                      <> long "steps"
-                      <> metavar "N"
-                      <> help "La cantidad de pasos por ejecutar"
-                  )
-              )
-        )
-
-fileArgument :: Parser FilePath
-fileArgument = argument str (metavar "FILE" <> help "El archivo que contiene el programa")
-
 main :: IO ()
 main = doWork =<< execParser opts
   where
@@ -154,7 +50,7 @@ exitError message = do
   fmtLn message
   exitFailure
 
-doWork :: Options -> IO ()
+doWork :: Commands -> IO ()
 doWork (Numbered n) = processNumbered n
 doWork (Info path opts) = withExistentFile path (processInfo opts)
 doWork (Eval path input opts@EvalOptions {doNotEvalSpeculatively}) = withExistentFile path $ \pathText -> do
@@ -212,7 +108,7 @@ printNormalizedIfDifferent p
     norm = getProgram . normalize $ p
 
 processInfo :: InfoOptions -> Text -> IO ()
-processInfo InfoOptions {format} t =
+processInfo (InfoOptions format) t =
   case TP.parse t of
     Nothing -> putStrLn "El programa no es valido"
     Just p -> do

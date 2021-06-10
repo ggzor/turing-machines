@@ -51,8 +51,8 @@ makeLenses ''StateRenderOptions
 makeLenses ''ComputedRenderOptions
 makeLenses ''RenderOptions
 
-generateComputedRenderOptions :: Program Integer -> IO (Maybe ComputedRenderOptions)
-generateComputedRenderOptions program = do
+generateComputedRenderOptions :: RenderOptions -> Program Integer -> IO (Maybe ComputedRenderOptions)
+generateComputedRenderOptions renderOptions program = do
   mSvg <- graphvizSvg (generateGraph program)
   pure do
     doc <- mSvg
@@ -63,27 +63,23 @@ generateComputedRenderOptions program = do
         strValue <- headMaybe . splitOn "pt" $ value
         readMaybe . unpack $ strValue
 
+    let size = renderOptions ^. cellSize
+        gap = renderOptions ^. cellGap
+        _cellsCount = (_width + gap) `div` (size + gap)
+    let _left = (_width - (_cellsCount * size + (_cellsCount - 1) * gap)) `div` 2
+
     pure
       ComputedRenderOptions
         { _width,
           _height,
-          _left = 10,
-          _cellsCount = 20
+          _left,
+          _cellsCount
         }
 
 graphvizSvg :: Text -> IO (Maybe Document)
 graphvizSvg graph = do
   svg <- readProcessMaybe graph
   pure $ svg >>= either (const Nothing) Just . parseText def . TL.fromStrict
-
-data RenderTapeSettings = RenderTapeSettings
-  { targetWidth :: Int,
-    size :: Int,
-    marginLeft :: Int,
-    marginTop :: Int,
-    padX :: Int,
-    tapeHeight2 :: Int
-  }
 
 data NodeSettings = NodeSettings
   { idx :: Index,
@@ -115,42 +111,43 @@ printImage renderSettings program state = do
             let newHeight = (renderSettings ^. computed . height) + (renderSettings ^. configuration . tapeHeight)
             let newViewBox = T.unwords [x, y, w, pack . show $ newHeight]
 
-            let settings =
-                  RenderTapeSettings
-                    { targetWidth = renderSettings ^. computed . width,
-                      marginTop = renderSettings ^. computed . height,
-                      tapeHeight2 = renderSettings ^. configuration . tapeHeight,
-                      size = 40,
-                      padX = 10,
-                      marginLeft = 10
-                    }
             let newDoc =
                   doc & root . attr "height" .~ fmt (newHeight |+ "pt")
                     & root . attr "viewBox" .~ newViewBox
-                    & root . nodes %~ (++ renderTape settings state)
+                    & root . nodes %~ (++ renderTape renderSettings state)
             pure . TL.toStrict . renderText def $ newDoc
         )
   case result of
     Just newDoc -> runProcess_ $ setStdin (encodeAsInput newDoc) "magick convert - out.png"
     Nothing -> putStrLn "Failed to process document"
 
-template :: RenderTapeSettings -> NodeSettings -> [Node]
-template RenderTapeSettings {size, marginLeft, marginTop, padX, tapeHeight2} NodeSettings {idx, bit, originalIdx, stateIdx} =
+template :: RenderSettings -> NodeSettings -> [Node]
+template renderSettings NodeSettings {idx, bit, originalIdx, stateIdx} =
   let fill :: Text = if stateIdx == originalIdx then "#d3d3d3" else "none"
+      size = renderSettings ^. configuration . cellSize
+      midSize = size `div` 2
+      baseX =
+        let marginLeft = renderSettings ^. computed . left
+            gap = renderSettings ^. configuration . cellGap
+         in marginLeft + (gap + size) * idx
+      baseY =
+        let marginTop = renderSettings ^. computed . height
+            midTapeHeight = (renderSettings ^. configuration . tapeHeight) `div` 2
+         in marginTop + midTapeHeight - midSize
       templateValue =
         [i|
 <svg xmlns="http://www.w3.org/2000/svg">
-  <rect x="#{marginLeft + (padX + size) * idx}" y="#{marginTop + (tapeHeight2 `div` 2) - (size `div` 2)}"
+  <rect x="#{baseX}" y="#{baseY}"
         width="#{size}" height="#{size}" stroke="#000" fill="#{fill}">
   </rect>
-  <text x="#{marginLeft + (padX + size) * idx + (size `div` 2)}"
-        y="#{marginTop + (tapeHeight2 `div` 2)}"
-        font-family="Times,serif" font-size="#{size `div` 2}"
+  <text x="#{baseX + midSize}"
+        y="#{baseY + midSize}"
+        font-family="Times,serif" font-size="#{midSize}"
         dominant-baseline="middle" text-anchor="middle" fill="#000">
     #{bit}
   </text>
-  <text x="#{marginLeft + (padX + size) * idx + (size `div` 2)}"
-        y="#{marginTop + (tapeHeight2 `div` 2) - (size `div` 2) - 10}"
+  <text x="#{baseX + midSize}"
+        y="#{baseY - 10}"
         font-family="Times,serif" font-size="#{size `div` 3}"
         dominant-baseline="middle" text-anchor="middle" fill="#000">
     #{originalIdx}
@@ -160,13 +157,13 @@ template RenderTapeSettings {size, marginLeft, marginTop, padX, tapeHeight2} Nod
       txt = view (root . nodes) <$> parseText def templateValue
    in fromRight [] txt
 
-renderTape :: RenderTapeSettings -> State Integer -> [Node]
-renderTape settings@RenderTapeSettings {targetWidth, size, padX} (State _ idx tape) =
-  let nodeCount = targetWidth `div` (size + padX)
-      leftNodes = (nodeCount `div` 2)
-      rightNodes = nodeCount - leftNodes
-      marginLeft = (targetWidth - nodeCount * (size + padX)) `div` 2
-   in template (settings {marginLeft})
+renderTape :: RenderSettings -> State Integer -> [Node]
+renderTape renderSettings (State _ idx tape) =
+  let (minIdx, maxIdx) =
+        pivotBounds
+          (renderSettings ^. computed . cellsCount)
+          (renderSettings ^. state . pivot)
+   in template renderSettings
         . ( \(screenIdx, j) ->
               NodeSettings
                 { idx = screenIdx,
@@ -175,7 +172,7 @@ renderTape settings@RenderTapeSettings {targetWidth, size, padX} (State _ idx ta
                   stateIdx = idx
                 }
           )
-        =<< zip [0 ..] [0 - leftNodes .. 0 + rightNodes - 1]
+        =<< zip [0 ..] [minIdx .. maxIdx]
 
 readProcessMaybe :: Text -> IO (Maybe Text)
 readProcessMaybe input = do

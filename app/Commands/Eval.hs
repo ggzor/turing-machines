@@ -30,17 +30,18 @@ makeLenses ''EvalConfiguration
 
 processEval :: EvalOptions -> Program Integer -> State Integer -> IO ()
 processEval opts program state@(State _ idx _) = do
-  _computedRenderOptions <- generateComputedRenderOptions program
+  let _renderOptions =
+        RenderOptions
+          { _tapeHeight = 200,
+            _cellSize = 40,
+            _cellGap = 10
+          }
+  _computedRenderOptions <- generateComputedRenderOptions _renderOptions program
   processEval' program state
     & ( `runReaderT`
           EvalConfiguration
             { _options = opts,
-              _renderOptions =
-                RenderOptions
-                  { _tapeHeight = 200,
-                    _cellSize = 40,
-                    _cellGap = 10
-                  },
+              _renderOptions,
               _computedRenderOptions
             }
       )

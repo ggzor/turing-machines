@@ -1,5 +1,8 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module SVG where
 
+import Control.Lens (both, makeLenses, mapMOf)
 import Data.Either (fromRight)
 import Data.Function ((&))
 import Data.String.Interpolate
@@ -19,47 +22,107 @@ import TuringMachines.Core
 import TuringMachines.Eval (readTape)
 import TuringMachines.Graphviz
 
+data RenderOptions = RenderOptions
+  { _tapeHeight :: !Int,
+    _cellSize :: !Int,
+    _cellGap :: !Int
+  }
+
+data ComputedRenderOptions = ComputedRenderOptions
+  { _width :: !Int,
+    _height :: !Int,
+    _left :: !Int,
+    _cellsCount :: !Int
+  }
+
+data StateRenderOptions = StateRenderOptions
+  { _pivot :: !Int,
+    _steps :: !Int
+  }
+
+data RenderSettings = RenderSettings
+  { _configuration :: !RenderOptions,
+    _computed :: !ComputedRenderOptions,
+    _state :: !StateRenderOptions
+  }
+
+makeLenses ''RenderSettings
+makeLenses ''StateRenderOptions
+makeLenses ''ComputedRenderOptions
+makeLenses ''RenderOptions
+
+generateComputedRenderOptions :: Program Integer -> IO (Maybe ComputedRenderOptions)
+generateComputedRenderOptions program = do
+  mSvg <- graphvizSvg (generateGraph program)
+  pure do
+    doc <- mSvg
+
+    (_width, _height) <-
+      ("width", "height") & mapMOf both \key -> do
+        let value = doc ^. root . attr key
+        strValue <- headMaybe . splitOn "pt" $ value
+        readMaybe . unpack $ strValue
+
+    pure
+      ComputedRenderOptions
+        { _width,
+          _height,
+          _left = 10,
+          _cellsCount = 20
+        }
+
+graphvizSvg :: Text -> IO (Maybe Document)
+graphvizSvg graph = do
+  svg <- readProcessMaybe graph
+  pure $ svg >>= either (const Nothing) Just . parseText def . TL.fromStrict
+
 data RenderTapeSettings = RenderTapeSettings
-  { targetWidth :: Integer,
-    size :: Integer,
-    marginLeft :: Integer,
-    marginTop :: Integer,
-    padX :: Integer,
-    tapeHeight :: Integer
+  { targetWidth :: Int,
+    size :: Int,
+    marginLeft :: Int,
+    marginTop :: Int,
+    padX :: Int,
+    tapeHeight2 :: Int
   }
 
 data NodeSettings = NodeSettings
-  { idx :: Integer,
+  { idx :: Index,
     bit :: Bit,
-    originalIdx :: Integer,
-    stateIdx :: Integer
+    originalIdx :: Index,
+    stateIdx :: Index
   }
 
-printImage :: Program Integer -> State Integer -> IO ()
-printImage program state = do
-  let tapeHeight = 200
-  svg <- readProcessMaybe (generateStatefulGraph program state)
+pivotBounds :: Int -> Index -> (Index, Index)
+pivotBounds n pivot
+  | odd n =
+    let space = (n - 1) `div` 2
+     in (pivot - space, pivot + space)
+  | otherwise =
+    let space = n `div` 2
+     in (pivot - space, pivot + space - 1)
+
+printImage :: RenderSettings -> Program Integer -> State Integer -> IO ()
+printImage renderSettings program state = do
+  mSvg <- graphvizSvg (generateStatefulGraph program state)
   let result =
         ( do
-            svgTxt <- svg
-            doc <- either (const Nothing) Just . parseText def . TL.fromStrict $ svgTxt
-            let heightAttr = doc ^. root . attr "height"
-            height <- readMaybe . unpack =<< (headMaybe . splitOn "pt" $ heightAttr)
-            let widthAttr = doc ^. root . attr "width"
-            width <- readMaybe . unpack =<< (headMaybe . splitOn "pt" $ widthAttr)
-            let newHeight = tapeHeight + height
+            doc <- mSvg
+
             (x, y, w) <- case T.words $ doc ^. root . attr "viewBox" of
               [x, y, w, _] -> Just (x, y, w)
               _ -> Nothing
+
+            let newHeight = (renderSettings ^. computed . height) + (renderSettings ^. configuration . tapeHeight)
             let newViewBox = T.unwords [x, y, w, pack . show $ newHeight]
+
             let settings =
                   RenderTapeSettings
-                    { targetWidth = width,
-                      marginTop = height,
-                      tapeHeight,
+                    { targetWidth = renderSettings ^. computed . width,
+                      marginTop = renderSettings ^. computed . height,
+                      tapeHeight2 = renderSettings ^. configuration . tapeHeight,
                       size = 40,
-                      marginLeft = 10,
-                      padX = 10
+                      padX = 10,
+                      marginLeft = 10
                     }
             let newDoc =
                   doc & root . attr "height" .~ fmt (newHeight |+ "pt")
@@ -72,22 +135,22 @@ printImage program state = do
     Nothing -> putStrLn "Failed to process document"
 
 template :: RenderTapeSettings -> NodeSettings -> [Node]
-template RenderTapeSettings {size, marginLeft, marginTop, padX, tapeHeight} NodeSettings {idx, bit, originalIdx, stateIdx} =
+template RenderTapeSettings {size, marginLeft, marginTop, padX, tapeHeight2} NodeSettings {idx, bit, originalIdx, stateIdx} =
   let fill :: Text = if stateIdx == originalIdx then "#d3d3d3" else "none"
       templateValue =
         [i|
 <svg xmlns="http://www.w3.org/2000/svg">
-  <rect x="#{marginLeft + (padX + size) * idx}" y="#{marginTop + (tapeHeight `div` 2) - (size `div` 2)}"
+  <rect x="#{marginLeft + (padX + size) * idx}" y="#{marginTop + (tapeHeight2 `div` 2) - (size `div` 2)}"
         width="#{size}" height="#{size}" stroke="#000" fill="#{fill}">
   </rect>
   <text x="#{marginLeft + (padX + size) * idx + (size `div` 2)}"
-        y="#{marginTop + (tapeHeight `div` 2)}"
+        y="#{marginTop + (tapeHeight2 `div` 2)}"
         font-family="Times,serif" font-size="#{size `div` 2}"
         dominant-baseline="middle" text-anchor="middle" fill="#000">
     #{bit}
   </text>
   <text x="#{marginLeft + (padX + size) * idx + (size `div` 2)}"
-        y="#{marginTop + (tapeHeight `div` 2) - (size `div` 2) - 10}"
+        y="#{marginTop + (tapeHeight2 `div` 2) - (size `div` 2) - 10}"
         font-family="Times,serif" font-size="#{size `div` 3}"
         dominant-baseline="middle" text-anchor="middle" fill="#000">
     #{originalIdx}
@@ -102,7 +165,6 @@ renderTape settings@RenderTapeSettings {targetWidth, size, padX} (State _ idx ta
   let nodeCount = targetWidth `div` (size + padX)
       leftNodes = (nodeCount `div` 2)
       rightNodes = nodeCount - leftNodes
-      idxInteger :: Integer = fromIntegral idx
       marginLeft = (targetWidth - nodeCount * (size + padX)) `div` 2
    in template (settings {marginLeft})
         . ( \(screenIdx, j) ->
@@ -110,7 +172,7 @@ renderTape settings@RenderTapeSettings {targetWidth, size, padX} (State _ idx ta
                 { idx = screenIdx,
                   bit = readTape (fromIntegral j) tape,
                   originalIdx = j,
-                  stateIdx = idxInteger
+                  stateIdx = idx
                 }
           )
         =<< zip [0 ..] [0 - leftNodes .. 0 + rightNodes - 1]

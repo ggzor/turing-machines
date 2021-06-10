@@ -1,6 +1,6 @@
 module Main where
 
-import Commands.Eval
+import Commands.Eval (processEval)
 import Commands.Info
 import Commands.Numbered
 import Data.Function ((&))
@@ -33,17 +33,19 @@ doWork (Info path opts) = withExistentFile path (processInfo opts)
 doWork (Eval path input opts@EvalOptions {doNotEvalSpeculatively}) = withExistentFile path $ \pathText -> do
   case TP.parse pathText of
     Just program ->
-      let (minIdx, maxIdx) = dangerouslyDetermineBounds program (State 1 0 input)
+      let initialIdx = 0
+          initialQ = 1
+          (minIdx, maxIdx) = dangerouslyDetermineBounds program (State initialQ initialIdx input)
           adjustedTape =
             input
               & IntMap.insert minIdx (fromMaybe B0 (IntMap.lookup minIdx input))
               & IntMap.insert maxIdx (fromMaybe B0 (IntMap.lookup maxIdx input))
           initialState =
-            State 1 0 $
+            State initialQ initialIdx $
               if doNotEvalSpeculatively
                 then input
                 else adjustedTape
-       in processEval 0 opts program initialState
+       in processEval opts program initialState
     Nothing -> exitError "El programa no es valido"
 
 dangerouslyDetermineBounds :: forall a. (Ord a) => Program a -> State a -> (Index, Index)

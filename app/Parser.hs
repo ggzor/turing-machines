@@ -21,7 +21,7 @@ newtype InfoOptions = InfoOptions [FormatOption]
 data EvalOptions = EvalOptions
   { doNotEvalSpeculatively :: !Bool,
     lineByLine :: !Bool,
-    limitSteps :: Maybe Integer
+    limitSteps :: Maybe Int
   }
 
 options :: Parser Commands

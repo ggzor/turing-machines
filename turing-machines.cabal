@@ -27,6 +27,7 @@ common shared-properties
     MultiWayIf
     NamedFieldPuns
     TupleSections
+    BlockArguments
 
     DeriveFoldable
     DeriveFunctor
@@ -103,6 +104,7 @@ executable turing-machines
     , containers
     , directory
     , fmt
+    , lens
     , optparse-applicative
     , raw-strings-qq
     , rio
@@ -110,6 +112,7 @@ executable turing-machines
     , temporary
     , text
     , typed-process
+    , unliftio
     , xml-conduit
     , xml-lens
 

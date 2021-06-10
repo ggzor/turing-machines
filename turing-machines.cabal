@@ -94,6 +94,7 @@ executable turing-machines
     , Commands.Numbered
     , Commands.Eval
     , Commands.Info
+    , SVG
     , Utils
   build-depends:
       turing-machines

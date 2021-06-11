@@ -1,7 +1,6 @@
 let
   sources = import ./nix/sources.nix;
   pkgs = import sources.nixpkgs { inherit config; };
-  hls = import sources.all-hls { version = "0.9.0"; ghc = "8.8.4"; };
 
   compilerVersion = "ghc884";
   compilerSet = pkgs.haskell.packages."${compilerVersion}";
@@ -23,7 +22,7 @@ in {
     buildInputs = with pkgs; [
       compilerSet.cabal-install
       haskellPackages.fourmolu
-      hls
+      haskell-language-server
     ];
   };
 }

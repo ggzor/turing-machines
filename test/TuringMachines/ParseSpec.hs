@@ -13,8 +13,8 @@ import Utils
 simpleProgram :: Program Integer
 simpleProgram =
   M.fromAscList
-    [ (1, Spec (Transition (SetTo B1) 1) (Transition (SetTo B0) 2)),
-      (2, Spec (Transition (MoveTo L) 2) (Transition (MoveTo R) 3))
+    [ (1, Spec (Transition (SetTo B1) 1) (Transition (SetTo B0) 2))
+    , (2, Spec (Transition (MoveTo L) 2) (Transition (MoveTo R) 3))
     ]
 
 simpleProgramText :: T.Text

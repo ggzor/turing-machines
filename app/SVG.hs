@@ -23,27 +23,27 @@ import TuringMachines.Eval (readTape)
 import TuringMachines.Graphviz
 
 data RenderOptions = RenderOptions
-  { _tapeHeight :: !Int,
-    _cellSize :: !Int,
-    _cellGap :: !Int
+  { _tapeHeight :: !Int
+  , _cellSize :: !Int
+  , _cellGap :: !Int
   }
 
 data ComputedRenderOptions = ComputedRenderOptions
-  { _width :: !Int,
-    _height :: !Int,
-    _left :: !Int,
-    _cellsCount :: !Int
+  { _width :: !Int
+  , _height :: !Int
+  , _left :: !Int
+  , _cellsCount :: !Int
   }
 
 data StateRenderOptions = StateRenderOptions
-  { _pivot :: !Int,
-    _steps :: !Int
+  { _pivot :: !Int
+  , _steps :: !Int
   }
 
 data RenderSettings = RenderSettings
-  { _configuration :: !RenderOptions,
-    _computed :: !ComputedRenderOptions,
-    _state :: !StateRenderOptions
+  { _configuration :: !RenderOptions
+  , _computed :: !ComputedRenderOptions
+  , _state :: !StateRenderOptions
   }
 
 makeLenses ''RenderSettings
@@ -70,10 +70,10 @@ generateComputedRenderOptions renderOptions program = do
 
     pure
       ComputedRenderOptions
-        { _width,
-          _height,
-          _left,
-          _cellsCount
+        { _width
+        , _height
+        , _left
+        , _cellsCount
         }
 
 graphvizSvg :: Text -> IO (Maybe Document)
@@ -82,10 +82,10 @@ graphvizSvg graph = do
   pure $ svg >>= either (const Nothing) Just . parseText def . TL.fromStrict
 
 data NodeSettings = NodeSettings
-  { idx :: Index,
-    bit :: Bit,
-    originalIdx :: Index,
-    stateIdx :: Index
+  { idx :: Index
+  , bit :: Bit
+  , originalIdx :: Index
+  , stateIdx :: Index
   }
 
 pivotBounds :: Int -> Index -> (Index, Index)
@@ -122,7 +122,7 @@ printImage renderSettings program state = do
     Nothing -> putStrLn "Failed to process document"
 
 template :: RenderSettings -> NodeSettings -> [Node]
-template renderSettings NodeSettings {idx, bit, originalIdx, stateIdx} =
+template renderSettings NodeSettings{idx, bit, originalIdx, stateIdx} =
   let fill :: Text = if stateIdx == originalIdx then "#d3d3d3" else "none"
       size = renderSettings ^. configuration . cellSize
       midSize = size `div` 2
@@ -166,10 +166,10 @@ renderTape renderSettings (State _ idx tape) =
    in template renderSettings
         . ( \(screenIdx, j) ->
               NodeSettings
-                { idx = screenIdx,
-                  bit = readTape (fromIntegral j) tape,
-                  originalIdx = j,
-                  stateIdx = idx
+                { idx = screenIdx
+                , bit = readTape (fromIntegral j) tape
+                , originalIdx = j
+                , stateIdx = idx
                 }
           )
         =<< zip [0 ..] [minIdx .. maxIdx]

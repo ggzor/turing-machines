@@ -19,19 +19,19 @@ data FormatOption = Original | Normalized | Number | PrimeSeq | Graph
 newtype InfoOptions = InfoOptions [FormatOption]
 
 data EvalOptions = EvalOptions
-  { doNotEvalSpeculatively :: !Bool,
-    lineByLine :: !Bool,
-    limitSteps :: Maybe Int
+  { doNotEvalSpeculatively :: !Bool
+  , lineByLine :: !Bool
+  , limitSteps :: Maybe Int
   }
 
 options :: Parser Commands
 options =
   subparser . fold $
     [ command "numbered" . info numberedOptions $
-        progDesc "Muestra el programa correspondiente al numero dado",
-      command "info" . info (infoOptions <**> helper) $
-        progDesc "Muestra información relevante del programa dado",
-      command "eval" . info (evalOptions <**> helper) $
+        progDesc "Muestra el programa correspondiente al numero dado"
+    , command "info" . info (infoOptions <**> helper) $
+        progDesc "Muestra información relevante del programa dado"
+    , command "eval" . info (evalOptions <**> helper) $
         progDesc "Evalua el programa con la entrada dada"
     ]
 
@@ -57,12 +57,12 @@ infoOptionsOptions =
           <> value [Original, Normalized, Number, PrimeSeq]
           <> help
             ( fold
-                [ "Formatos disponibles:",
-                  " o = Programa original",
-                  ", n = Programa normalizado",
-                  ", u = Numero de Godel",
-                  ", s = Sequencia de primos",
-                  ", g = Grafo"
+                [ "Formatos disponibles:"
+                , " o = Programa original"
+                , ", n = Programa normalizado"
+                , ", u = Numero de Godel"
+                , ", s = Sequencia de primos"
+                , ", g = Grafo"
                 ]
             )
       )

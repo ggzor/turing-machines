@@ -22,7 +22,7 @@ in {
     packages = p: [p.turing-machines];
     buildInputs = with pkgs; [
       compilerSet.cabal-install
-      ormolu
+      haskellPackages.fourmolu
       hls
     ];
   };

@@ -30,7 +30,7 @@ main = doWork =<< execParser opts
 doWork :: Commands -> IO ()
 doWork (Numbered n) = processNumbered n
 doWork (Info path opts) = withExistentFile path (processInfo opts)
-doWork (Eval path input opts@EvalOptions {doNotEvalSpeculatively}) = withExistentFile path $ \pathText -> do
+doWork (Eval path input opts@EvalOptions{doNotEvalSpeculatively}) = withExistentFile path $ \pathText -> do
   case TP.parse pathText of
     Just program ->
       let initialIdx = 0
@@ -53,8 +53,8 @@ dangerouslyDetermineBounds prog st@(State _ idx tape) =
   go
     prog
     st
-    ( min idx (maybe idx fst (IntMap.lookupMin tape)),
-      max idx (maybe idx fst (IntMap.lookupMax tape))
+    ( min idx (maybe idx fst (IntMap.lookupMin tape))
+    , max idx (maybe idx fst (IntMap.lookupMax tape))
     )
   where
     go :: Program a -> State a -> (Index, Index) -> (Index, Index)

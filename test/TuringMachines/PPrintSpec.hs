@@ -16,8 +16,8 @@ spec =
     it "should print correctly all types of transitions" $
       pprint
         ( M.fromList
-            [ ("q1", Spec (Transition (SetTo B0) "q2") (Transition (SetTo B1) "q2")),
-              ("q2", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3"))
+            [ ("q1", Spec (Transition (SetTo B0) "q2") (Transition (SetTo B1) "q2"))
+            , ("q2", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3"))
             ] ::
             Program QString
         )
@@ -30,8 +30,8 @@ q2 Lq3 Rq3
     it "should print halt states aligned to non halt states" $
       pprint
         ( M.fromList
-            [ ("q1", Spec Halt Halt),
-              ("q2", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3"))
+            [ ("q1", Spec Halt Halt)
+            , ("q2", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3"))
             ] ::
             Program QString
         )
@@ -44,8 +44,8 @@ q2 Lq3 Rq3
     it "should align two digit states" $
       pprint
         ( M.fromList
-            [ ("q1", Spec (Transition (SetTo B0) "q10") (Transition (SetTo B1) "q10")),
-              ("q10", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3"))
+            [ ("q1", Spec (Transition (SetTo B0) "q10") (Transition (SetTo B1) "q10"))
+            , ("q10", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3"))
             ] ::
             Program QString
         )
@@ -58,9 +58,9 @@ q10 Lq3  Rq3
     it "should align two digit states and halts" $
       pprint
         ( M.fromList
-            [ ("q1", Spec (Transition (SetTo B0) "q10") (Transition (SetTo B1) "q10")),
-              ("q10", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3")),
-              ("q30", Spec Halt Halt)
+            [ ("q1", Spec (Transition (SetTo B0) "q10") (Transition (SetTo B1) "q10"))
+            , ("q10", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3"))
+            , ("q30", Spec Halt Halt)
             ] ::
             Program QString
         )
@@ -74,9 +74,9 @@ q30  _    _
     it "should align states and specs independently" $
       pprint
         ( M.fromList
-            [ ("q1", Spec (Transition (SetTo B0) "q10") (Transition (SetTo B1) "q10")),
-              ("q2", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3")),
-              ("q3", Spec Halt Halt)
+            [ ("q1", Spec (Transition (SetTo B0) "q10") (Transition (SetTo B1) "q10"))
+            , ("q2", Spec (Transition (MoveTo L) "q3") (Transition (MoveTo R) "q3"))
+            , ("q3", Spec Halt Halt)
             ] ::
             Program QString
         )

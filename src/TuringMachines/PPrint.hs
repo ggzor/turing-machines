@@ -16,8 +16,8 @@ pprint program =
     . fmap
       ( \(q, spec) ->
           T.unwords
-            [ T.pack (padRightF maxStateLen ' ' (show q) |+ ""),
-              pprintSpec maxStateTransitionLen spec
+            [ T.pack (padRightF maxStateLen ' ' (show q) |+ "")
+            , pprintSpec maxStateTransitionLen spec
             ]
       )
     . M.toAscList
@@ -33,8 +33,8 @@ pprint program =
 pprintSpec :: Show a => Int -> Spec a -> Text
 pprintSpec maxLen (Spec if0 if1) =
   T.unwords
-    [ padRightF (maxLen + 1) ' ' (pprintTransition if0) |+ "",
-      T.stripEnd $ pprintTransition if1
+    [ padRightF (maxLen + 1) ' ' (pprintTransition if0) |+ ""
+    , T.stripEnd $ pprintTransition if1
     ]
 
 pprintTransition :: Show a => Transition a -> Text

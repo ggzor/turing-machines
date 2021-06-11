@@ -138,18 +138,18 @@ template renderSettings NodeSettings {idx, bit, originalIdx, stateIdx} =
         [i|
 <svg xmlns="http://www.w3.org/2000/svg">
   <rect x="#{baseX}" y="#{baseY}"
-        width="#{size}" height="#{size}" stroke="#000" fill="#{fill}">
+        width="#{size}" height="#{size}" stroke="\#000" fill="#{fill}">
   </rect>
   <text x="#{baseX + midSize}"
         y="#{baseY + midSize}"
         font-family="Times,serif" font-size="#{midSize}"
-        dominant-baseline="middle" text-anchor="middle" fill="#000">
+        dominant-baseline="middle" text-anchor="middle" fill="\#000">
     #{bit}
   </text>
   <text x="#{baseX + midSize}"
         y="#{baseY - 10}"
         font-family="Times,serif" font-size="#{size `div` 3}"
-        dominant-baseline="middle" text-anchor="middle" fill="#000">
+        dominant-baseline="middle" text-anchor="middle" fill="\#000">
     #{originalIdx}
   </text>
 </svg>

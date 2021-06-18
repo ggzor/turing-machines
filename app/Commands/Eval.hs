@@ -8,11 +8,11 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Function ((&))
 import qualified Data.IntMap.Strict as IntMap
 import qualified Data.Map.Strict as M
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Interpolate
 import Data.Text (Text, justifyRight, pack)
 import Fmt (fmt, padRightF, (+|), (|+))
-import Parser (EvalOptions (EvalOptions, limitSteps, lineByLine, outputDirectory, stepOutput))
+import Parser (EvalOptions (EvalOptions, doNotEvalSpeculatively, limitSteps, lineByLine, outputDirectory, stepOutput))
 import RIO (MonadReader, ReaderT (runReaderT))
 import RIO.FilePath ((</>))
 import RIO.State (MonadState, evalStateT, get)
@@ -31,48 +31,77 @@ data EvalOutputMode
   deriving
     (Ord, Eq)
 
+data SpeculativeData = SpeculativeData
+  { _totalSteps :: !Int
+  , _minimumIdx :: !Int
+  , _maximumIdx :: !Int
+  }
+
+makeLenses ''SpeculativeData
+
 data EvalConfiguration = EvalConfiguration
   { _options :: !EvalOptions
   , _renderOptions :: !RenderOptions
   , _computedRenderOptions :: !(Maybe ComputedRenderOptions)
   , _outputModes :: ![EvalOutputMode]
+  , _speculativeData :: !(Maybe SpeculativeData)
   }
 
 makeLenses ''EvalConfiguration
 
-processEval :: EvalOptions -> Program Integer -> State Integer -> IO ()
-processEval opts@EvalOptions{stepOutput, outputDirectory} program state@(State _ idx _) = do
-  let _renderOptions =
-        RenderOptions
-          { _tapeHeight = 200
-          , _cellSize = 40
-          , _cellGap = 10
-          }
-  let _outputModes =
-        case (stepOutput, outputDirectory) of
-          (Nothing, Nothing) -> [ConsoleOut]
-          (Nothing, Just outDir) -> [DirectoryOut outDir]
-          (imOut, outDir) ->
-            catMaybes
-              [ ImageOut <$> imOut
-              , DirectoryOut <$> outDir
-              , Just ConsoleOut
-              ]
-
-  _computedRenderOptions <- case _outputModes of
-    [ConsoleOut] -> pure Nothing
-    _ -> generateComputedRenderOptions _renderOptions program
-
-  processEval' program state
-    & ( `runReaderT`
-          EvalConfiguration
-            { _options = opts
-            , _renderOptions
-            , _computedRenderOptions
-            , _outputModes
+processEval :: EvalOptions -> Program Integer -> Tape -> IO ()
+processEval
+  opts@EvalOptions{doNotEvalSpeculatively, limitSteps, stepOutput, outputDirectory}
+  program
+  tape = do
+    let _renderOptions =
+          RenderOptions
+            { _tapeHeight = 200
+            , _cellSize = 40
+            , _cellGap = 10
             }
-      )
-    & (`evalStateT` StateRenderOptions{_steps = 0, _pivot = idx})
+    let _outputModes =
+          case (stepOutput, outputDirectory) of
+            (Nothing, Nothing) -> [ConsoleOut]
+            (Nothing, Just outDir) -> [DirectoryOut outDir]
+            (imOut, outDir) ->
+              catMaybes
+                [ ImageOut <$> imOut
+                , DirectoryOut <$> outDir
+                , Just ConsoleOut
+                ]
+
+    _computedRenderOptions <- case _outputModes of
+      [ConsoleOut] -> pure Nothing
+      _ -> generateComputedRenderOptions _renderOptions program
+
+    let initialQ = 1
+    let initialIdx = 0
+    let initialState = State initialQ initialIdx tape
+
+    let speculativeData = speculativeEval program initialState limitSteps
+    let adjustedTape =
+          let minIdx = speculativeData ^. minimumIdx
+              maxIdx = speculativeData ^. maximumIdx
+           in tape
+                & IntMap.insert minIdx (fromMaybe B0 (IntMap.lookup minIdx tape))
+                & IntMap.insert maxIdx (fromMaybe B0 (IntMap.lookup maxIdx tape))
+    let adjustedState = State 1 0 adjustedTape
+
+    processEval' program (if doNotEvalSpeculatively then initialState else adjustedState)
+      & ( `runReaderT`
+            EvalConfiguration
+              { _options = opts
+              , _renderOptions
+              , _computedRenderOptions
+              , _outputModes
+              , _speculativeData =
+                  if doNotEvalSpeculatively
+                    then Nothing
+                    else Just speculativeData
+              }
+        )
+      & (`evalStateT` StateRenderOptions{_steps = 0, _pivot = initialIdx})
 
 processEval' ::
   ( MonadIO m
@@ -128,14 +157,6 @@ processEval' program state@(State _ idx _) = do
             program
             st
 
-relocatePivot :: Int -> Index -> Index -> Index
-relocatePivot n newIdx pivot =
-  let (minIdx, maxIdx) = pivotBounds n pivot
-   in if
-          | newIdx < minIdx -> pivot - (minIdx - newIdx)
-          | maxIdx < newIdx -> pivot + (newIdx - maxIdx)
-          | otherwise -> pivot
-
 pprintState :: Program Integer -> State Integer -> IO ()
 pprintState program (State q idx tape) = do
   let maxStateLength = length . show $ maybe 0 fst (M.lookupMax program)
@@ -149,6 +170,38 @@ pprintState program (State q idx tape) = do
   where
     tapeInterval :: Index -> Index -> String
     tapeInterval start end = bitToStr . flip readTape tape <$> [start .. end - 1]
+
+speculativeEval :: Program Integer -> State Integer -> Maybe Int -> SpeculativeData
+speculativeEval program state@(State _ idx tape) limitSteps =
+  go
+    state
+    SpeculativeData
+      { _totalSteps = 0
+      , _minimumIdx = min idx (maybe idx fst (IntMap.lookupMin tape))
+      , _maximumIdx = max idx (maybe idx fst (IntMap.lookupMin tape))
+      }
+  where
+    go s prevData =
+      if maybe False (prevData ^. totalSteps >=) limitSteps
+        then prevData
+        else case eval program s of
+          Nothing -> prevData
+          Just newState@(State _ newIdx _) ->
+            go
+              newState
+              SpeculativeData
+                { _totalSteps = prevData ^. totalSteps + 1
+                , _minimumIdx = min (prevData ^. minimumIdx) newIdx
+                , _maximumIdx = max (prevData ^. maximumIdx) newIdx
+                }
+
+relocatePivot :: Int -> Index -> Index -> Index
+relocatePivot n newIdx pivot =
+  let (minIdx, maxIdx) = pivotBounds n pivot
+   in if
+          | newIdx < minIdx -> pivot - (minIdx - newIdx)
+          | maxIdx < newIdx -> pivot + (newIdx - maxIdx)
+          | otherwise -> pivot
 
 bitToStr :: Bit -> Char
 bitToStr b = case b of

@@ -22,12 +22,14 @@ data EvalOptions = EvalOptions
   { doNotEvalSpeculatively :: !Bool
   , lineByLine :: !Bool
   , limitSteps :: Maybe Int
+  , stepOutput :: Maybe FilePath
+  , outputDirectory :: Maybe FilePath
   }
 
 options :: Parser Commands
 options =
   subparser . fold $
-    [ command "numbered" . info numberedOptions $
+    [ command "numbered" . info (numberedOptions <**> helper) $
         progDesc "Muestra el programa correspondiente al numero dado"
     , command "info" . info (infoOptions <**> helper) $
         progDesc "Muestra información relevante del programa dado"
@@ -110,6 +112,27 @@ evalOptions =
                       <> long "steps"
                       <> metavar "N"
                       <> help "La cantidad de pasos por ejecutar"
+                  )
+              )
+            <*> optional
+              ( option
+                  str
+                  ( short 'o'
+                      <> long "out-image"
+                      <> metavar "OUT_IMAGE"
+                      <> help "La imagen a generar por cada iteracion"
+                  )
+              )
+            <*> optional
+              ( option
+                  str
+                  ( short 'd'
+                      <> long "directory"
+                      <> metavar "OUT_DIR"
+                      <> help
+                        ( "El directorio en el cual generar los pasos de evaluación"
+                            ++ ". Implica no evaluar en tiempo real, a menos que se especifique --image"
+                        )
                   )
               )
         )

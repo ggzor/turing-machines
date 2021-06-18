@@ -15,6 +15,7 @@ import RIO.ByteString.Lazy (fromStrict)
 import RIO.List (headMaybe)
 import RIO.Prelude (decodeUtf8', readMaybe)
 import System.Exit
+import System.IO.Temp (emptySystemTempFile)
 import System.Process.Typed
 import Text.XML (def, parseText, renderText)
 import Text.XML.Lens
@@ -97,7 +98,7 @@ pivotBounds n pivot
     let space = n `div` 2
      in (pivot - space, pivot + space - 1)
 
-printImage :: RenderSettings -> Program Integer -> State Integer -> IO ()
+printImage :: RenderSettings -> Program Integer -> State Integer -> IO (Maybe FilePath)
 printImage renderSettings program state = do
   mSvg <- graphvizSvg (generateStatefulGraph program state)
   let result =
@@ -108,7 +109,9 @@ printImage renderSettings program state = do
               [x, y, w, _] -> Just (x, y, w)
               _ -> Nothing
 
-            let newHeight = (renderSettings ^. computed . height) + (renderSettings ^. configuration . tapeHeight)
+            let newHeight =
+                  (renderSettings ^. computed . height)
+                    + (renderSettings ^. configuration . tapeHeight)
             let newViewBox = T.unwords [x, y, w, pack . show $ newHeight]
 
             let newDoc =
@@ -118,8 +121,12 @@ printImage renderSettings program state = do
             pure . TL.toStrict . renderText def $ newDoc
         )
   case result of
-    Just newDoc -> runProcess_ $ setStdin (encodeAsInput newDoc) "magick convert - out.png"
-    Nothing -> putStrLn "Failed to process document"
+    Just newDoc -> do
+      tempPath <- emptySystemTempFile "turing-machines.png"
+      runProcess_ . setStdin (encodeAsInput newDoc) $
+        proc "magick" ["convert", "-", tempPath]
+      pure $ Just tempPath
+    Nothing -> putStrLn "Failed to process document" >> pure Nothing
 
 template :: RenderSettings -> NodeSettings -> [Node]
 template renderSettings NodeSettings{idx, bit, originalIdx, stateIdx} =

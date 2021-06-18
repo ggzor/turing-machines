@@ -56,9 +56,10 @@ processEval
   tape = do
     let _renderOptions =
           RenderOptions
-            { _tapeHeight = 200
+            { _tapeHeight = 150
             , _cellSize = 40
             , _cellGap = 10
+            , _minWidth = 400
             }
     let _outputModes =
           case (stepOutput, outputDirectory) of

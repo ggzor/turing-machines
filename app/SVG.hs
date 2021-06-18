@@ -27,6 +27,7 @@ data RenderOptions = RenderOptions
   { _tapeHeight :: !Int
   , _cellSize :: !Int
   , _cellGap :: !Int
+  , _minWidth :: !Int
   }
 
 data ComputedRenderOptions = ComputedRenderOptions
@@ -58,12 +59,13 @@ generateComputedRenderOptions renderOptions program = do
   pure do
     doc <- mSvg
 
-    (_width, _height) <-
+    (_initial_width, _height) <-
       ("width", "height") & mapMOf both \key -> do
         let value = doc ^. root . attr key
         strValue <- headMaybe . splitOn "pt" $ value
         readMaybe . unpack $ strValue
 
+    let _width = max _initial_width $ renderOptions ^. minWidth
     let size = renderOptions ^. cellSize
         gap = renderOptions ^. cellGap
         _cellsCount = (_width + gap) `div` (size + gap)
@@ -105,17 +107,20 @@ printImage renderSettings program state = do
         ( do
             doc <- mSvg
 
-            (x, y, w) <- case T.words $ doc ^. root . attr "viewBox" of
-              [x, y, w, _] -> Just (x, y, w)
+            (x, y) <- case T.words $ doc ^. root . attr "viewBox" of
+              [x, y, _, _] -> Just (x, y)
               _ -> Nothing
 
             let newHeight =
                   (renderSettings ^. computed . height)
                     + (renderSettings ^. configuration . tapeHeight)
-            let newViewBox = T.unwords [x, y, w, pack . show $ newHeight]
+                newWidth = renderSettings ^. computed . width
+            let newViewBox = T.unwords [x, y, pack . show $ newWidth, pack . show $ newHeight]
 
             let newDoc =
-                  doc & root . attr "height" .~ fmt (newHeight |+ "pt")
+                  doc
+                    & root . attr "height" .~ fmt (newHeight |+ "pt")
+                    & root . attr "width" .~ fmt (newWidth |+ "pt")
                     & root . attr "viewBox" .~ newViewBox
                     & root . nodes %~ (++ renderTape renderSettings state)
             pure . TL.toStrict . renderText def $ newDoc

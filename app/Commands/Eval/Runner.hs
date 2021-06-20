@@ -13,9 +13,10 @@ import qualified Data.IntMap.Strict as IntMap
 import qualified Data.Map.Strict as M
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Interpolate
-import Data.Text (justifyRight, pack)
+import Data.Text (justifyRight)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import Data.Text.Utils (tshow)
 import RIO (MonadReader, ReaderT (runReaderT))
 import RIO.FilePath ((</>))
 import RIO.State (MonadState, evalStateT, get)
@@ -143,7 +144,7 @@ processEval' program state@(State _ idx _) = do
     DirectoryOut dir -> case generatedImage of
       Nothing -> pure ()
       Just path -> liftIO do
-        let stepStr = justifyRight 3 '0' . pack . show $ currentSteps
+        let stepStr = justifyRight 3 '0' . tshow $ currentSteps
             targetFile = dir </> [i|step-#{stepStr}.png|]
         createDirectoryIfMissing True dir
         copyFile path targetFile

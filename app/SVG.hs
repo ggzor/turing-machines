@@ -10,9 +10,10 @@ import Control.Lens (both, makeLenses, mapMOf)
 import Data.Either (fromRight)
 import Data.Function ((&))
 import Data.String.Interpolate
-import Data.Text (Text, pack, splitOn, unpack)
+import Data.Text (Text, splitOn, unpack)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
+import Data.Text.Utils (tshow)
 import RIO (encodeUtf8, toStrictBytes, view, (%~), (.~), (^.))
 import RIO.ByteString.Lazy (fromStrict)
 import RIO.List (headMaybe)
@@ -115,7 +116,7 @@ printImage renderSettings program state = do
                   (renderSettings ^. computed . height)
                     + (renderSettings ^. configuration . tapeHeight)
                 newWidth = renderSettings ^. computed . width
-            let newViewBox = T.unwords [x, y, pack . show $ newWidth, pack . show $ newHeight]
+            let newViewBox = T.unwords [x, y, tshow newWidth, tshow newHeight]
 
             let newDoc =
                   doc

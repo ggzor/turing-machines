@@ -9,6 +9,7 @@ import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Text.Utils (tshow)
 
 pprint :: (Ord a, Show a) => Program a -> Text
 pprint program =
@@ -16,7 +17,7 @@ pprint program =
     . fmap
       ( \(q, spec) ->
           T.unwords
-            [ T.justifyLeft maxStateLen ' ' (T.pack . show $ q)
+            [ T.justifyLeft maxStateLen ' ' (tshow q)
             , pprintSpec maxStateTransitionLen spec
             ]
       )
@@ -38,7 +39,7 @@ pprintSpec maxLen (Spec if0 if1) =
     ]
 
 pprintTransition :: Show a => Transition a -> Text
-pprintTransition (Transition a q) = T.concat [pprintAction a, T.pack (show q)]
+pprintTransition (Transition a q) = T.concat [pprintAction a, tshow q]
 pprintTransition Halt = " _"
 
 pprintAction :: Action -> Text

@@ -1,6 +1,7 @@
 module Main where
 
-import Commands.Eval (processEval)
+import Commands.Eval.Parser
+import Commands.Eval.Runner (processEval)
 import Commands.Info
 import Commands.Numbered
 import Data.Text (Text)
@@ -30,7 +31,7 @@ doWork (Numbered n) = processNumbered n
 doWork (Info path opts) =
   withExistentFile path \pathText ->
     withValidProgram path pathText (processInfo opts)
-doWork (Eval path input opts) =
+doWork (Eval (EvalCommandOptions path input opts)) =
   withExistentFile path \pathText ->
     withValidProgram path pathText \program ->
       processEval opts program input

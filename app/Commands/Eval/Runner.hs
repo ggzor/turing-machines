@@ -1,6 +1,9 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Commands.Eval where
+module Commands.Eval.Runner where
+
+import Commands.Eval.Parser (EvalOptions (EvalOptions))
+import qualified Commands.Eval.Parser as P
 
 import Control.Lens (makeLenses, use, view, (%=), (+=), (^.))
 import Control.Monad (void)
@@ -12,8 +15,6 @@ import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Interpolate
 import Data.Text (Text, justifyRight, pack)
 import Fmt (fmt, padRightF, (+|), (|+))
-import Parser (EvalOptions (EvalOptions, doNotEvalSpeculatively, limitSteps, lineByLine, outputDirectory, stepOutput))
-import qualified Parser as P
 import RIO (MonadReader, ReaderT (runReaderT))
 import RIO.FilePath ((</>))
 import RIO.State (MonadState, evalStateT, get)
@@ -53,10 +54,10 @@ makeLenses ''EvalConfiguration
 processEval :: EvalOptions -> Program Integer -> Tape -> IO ()
 processEval
   opts@EvalOptions
-    { doNotEvalSpeculatively
-    , limitSteps
-    , stepOutput
-    , outputDirectory
+    { P.doNotEvalSpeculatively
+    , P.limitSteps
+    , P.stepOutput
+    , P.outputDirectory
     , P.renderOptions
     }
   program
@@ -113,7 +114,7 @@ processEval' ::
   State Integer ->
   m ()
 processEval' program state@(State _ idx _) = do
-  EvalOptions{lineByLine, limitSteps} <- view options
+  EvalOptions{P.lineByLine, P.limitSteps} <- view options
 
   generatedImage <-
     view computedRenderOptions >>= \case

@@ -93,9 +93,11 @@ executable turing-machines
   main-is:             Main.hs
   other-modules:
       Parser
+    , ParserUtils
     , Commands.Numbered
-    , Commands.Eval
     , Commands.Info
+    , Commands.Eval.Parser
+    , Commands.Eval.Runner
     , SVG
     , Utils
   build-depends:

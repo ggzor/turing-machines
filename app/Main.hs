@@ -7,17 +7,19 @@ import Commands.Info.Runner (processInfo)
 import Commands.Numbered.Parser (NumberedCommandOptions (..))
 import Commands.Numbered.Runner (processNumbered)
 
-import Data.Text (Text)
-import Fmt ((+|), (|+))
-import Options.Applicative hiding (action)
+import TuringMachines.Core
+import qualified TuringMachines.Parser as TP
+
 import Parser
+import Utils
+
+import Data.String.Interpolate
+import Data.Text (Text)
+import Options.Applicative hiding (action)
 import RIO (readFileUtf8)
 import System.Console.ANSI
 import System.Directory (doesFileExist)
 import Text.Megaparsec (errorBundlePretty, parse)
-import TuringMachines.Core
-import qualified TuringMachines.Parser as TP
-import Utils
 
 main :: IO ()
 main = doWork =<< execParser opts
@@ -44,7 +46,7 @@ withExistentFile path action = do
   exists <- doesFileExist path
   if exists
     then readFileUtf8 path >>= action
-    else exitError $ "El archivo '" +| path |+ "' no existe"
+    else exitError [i|"El archivo #{path} no existe"|]
 
 withValidProgram :: FilePath -> Text -> (Program Integer -> IO ()) -> IO ()
 withValidProgram path programText action = do

@@ -1,14 +1,14 @@
 module TuringMachines.PPrint where
 
+import TuringMachines.Core
+import TuringMachines.Numbering (allStates)
+import TuringMachines.Show ()
+
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
 import Data.Text (Text)
 import qualified Data.Text as T
-import Fmt
-import TuringMachines.Core
-import TuringMachines.Numbering (allStates)
-import TuringMachines.Show ()
 
 pprint :: (Ord a, Show a) => Program a -> Text
 pprint program =
@@ -16,7 +16,7 @@ pprint program =
     . fmap
       ( \(q, spec) ->
           T.unwords
-            [ T.pack (padRightF maxStateLen ' ' (show q) |+ "")
+            [ T.justifyLeft maxStateLen ' ' (T.pack . show $ q)
             , pprintSpec maxStateTransitionLen spec
             ]
       )
@@ -33,7 +33,7 @@ pprint program =
 pprintSpec :: Show a => Int -> Spec a -> Text
 pprintSpec maxLen (Spec if0 if1) =
   T.unwords
-    [ padRightF (maxLen + 1) ' ' (pprintTransition if0) |+ ""
+    [ T.justifyLeft (maxLen + 1) ' ' (pprintTransition if0)
     , T.stripEnd $ pprintTransition if1
     ]
 

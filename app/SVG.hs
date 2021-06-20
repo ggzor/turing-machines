@@ -2,6 +2,10 @@
 
 module SVG where
 
+import TuringMachines.Core
+import TuringMachines.Eval (readTape)
+import TuringMachines.Graphviz
+
 import Control.Lens (both, makeLenses, mapMOf)
 import Data.Either (fromRight)
 import Data.Function ((&))
@@ -9,7 +13,6 @@ import Data.String.Interpolate
 import Data.Text (Text, pack, splitOn, unpack)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
-import Fmt (fmt, (|+))
 import RIO (encodeUtf8, toStrictBytes, view, (%~), (.~), (^.))
 import RIO.ByteString.Lazy (fromStrict)
 import RIO.List (headMaybe)
@@ -19,9 +22,6 @@ import System.IO.Temp (emptySystemTempFile)
 import System.Process.Typed
 import Text.XML (def, parseText, renderText)
 import Text.XML.Lens
-import TuringMachines.Core
-import TuringMachines.Eval (readTape)
-import TuringMachines.Graphviz
 
 data RenderOptions = RenderOptions
   { _tapeHeight :: !Int
@@ -119,8 +119,8 @@ printImage renderSettings program state = do
 
             let newDoc =
                   doc
-                    & root . attr "height" .~ fmt (newHeight |+ "pt")
-                    & root . attr "width" .~ fmt (newWidth |+ "pt")
+                    & root . attr "height" .~ [i|#{newHeight}pt|]
+                    & root . attr "width" .~ [i|#{newWidth}pt|]
                     & root . attr "viewBox" .~ newViewBox
                     & root . nodes %~ (++ renderTape renderSettings state)
             pure . TL.toStrict . renderText def $ newDoc

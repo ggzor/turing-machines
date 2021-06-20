@@ -13,8 +13,9 @@ import qualified Data.IntMap.Strict as IntMap
 import qualified Data.Map.Strict as M
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.String.Interpolate
-import Data.Text (Text, justifyRight, pack)
-import Fmt (fmt, padRightF, (+|), (|+))
+import Data.Text (justifyRight, pack)
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import RIO (MonadReader, ReaderT (runReaderT))
 import RIO.FilePath ((</>))
 import RIO.State (MonadState, evalStateT, get)
@@ -164,10 +165,14 @@ pprintState program (State q idx tape) = do
   let maxStateLength = length . show $ maybe 0 fst (M.lookupMax program)
       minIdx = maybe idx fst (IntMap.lookupMin tape)
       maxIdx = maybe idx fst (IntMap.lookupMax tape)
-  fmt $ padRightF (maxStateLength + 3) ' ' (("<q" +| q |+ ">") :: Text) |+ " " +| tapeInterval minIdx idx |+ ""
+
+  let stateStr = T.justifyLeft (maxStateLength + 3) ' ' [i|<q#{q}>|]
+  TIO.putStr [i|#{stateStr} #{tapeInterval minIdx idx}|]
+
   setSGR [SetUnderlining SingleUnderline, SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
   putChar . bitToStr $ readTape idx tape
   setSGR [Reset]
+
   putStr $ tapeInterval (idx + 1) (maxIdx + 1)
   where
     tapeInterval :: Index -> Index -> String

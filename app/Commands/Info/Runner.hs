@@ -1,14 +1,18 @@
 module Commands.Info.Runner where
 
 import Commands.Info.Parser
-import Control.Monad (forM_, void)
-import Fmt (fmt, fmtLn, (+|), (|+))
-import Math.Primes (primes)
+
 import TuringMachines.Core
 import TuringMachines.Graphviz
 import TuringMachines.Normalize (getProgram, normalize)
 import TuringMachines.Numbering
+
+import Math.Primes (primes)
 import Utils
+
+import Control.Monad (forM_, void)
+import Data.String.Interpolate
+import qualified Data.Text.IO as TIO
 
 processInfo :: InfoOptions -> Program Integer -> IO ()
 processInfo (InfoOptions format) p = do
@@ -16,7 +20,7 @@ processInfo (InfoOptions format) p = do
   let normalized = normalize p
 
   if format == [Normalized, Graph]
-    then fmtLn $ generateGraph (getProgram normalized) |+ ""
+    then TIO.putStrLn $ generateGraph (getProgram normalized)
     else do
       forM_ format $ \case
         Original -> do
@@ -31,8 +35,8 @@ processInfo (InfoOptions format) p = do
         PrimeSeq -> do
           label "Secuencia de potencias de primos: "
           putStrLn $
-            unwords . zipWith (\prime n -> fmt $ prime |+ "^" +| n |+ "") primes $
+            unwords . zipWith (\prime n -> [i|#{prime}^#{n}|]) primes $
               programAsSequence normalized
         Graph -> do
           label "Grafo: "
-          fmtLn $ generateGraph p |+ ""
+          TIO.putStrLn $ generateGraph p

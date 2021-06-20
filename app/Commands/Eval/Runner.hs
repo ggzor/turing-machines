@@ -22,11 +22,18 @@ import RIO.FilePath ((</>))
 import RIO.State (MonadState, evalStateT, get)
 import SVG
 import System.Console.ANSI
-import System.Directory (copyFile, createDirectoryIfMissing)
+import System.Directory (
+  copyFile,
+  createDirectoryIfMissing,
+  doesDirectoryExist,
+  listDirectory,
+  removeDirectoryRecursive,
+ )
 import System.IO (hFlush, stdout)
 import TuringMachines.Core
 import TuringMachines.Eval (eval, readTape)
 import UnliftIO (MonadIO)
+import Utils
 
 data EvalOutputMode
   = ConsoleOut
@@ -70,8 +77,8 @@ processEval
             (Nothing, Just outDir) -> [DirectoryOut outDir]
             (imOut, outDir) ->
               catMaybes
-                [ ImageOut <$> imOut
-                , DirectoryOut <$> outDir
+                [ DirectoryOut <$> outDir
+                , ImageOut <$> imOut
                 , Just ConsoleOut
                 ]
 
@@ -150,6 +157,25 @@ processEval' program state@(State _ idx _) = do
               digits = maybe 3 (length . show) totalSteps
               msgString = [i|Generando imagenes #{currentSteps}#{totalString}|]
           putStrLn msgString
+
+          askProceed <-
+            and
+              <$> sequence
+                [ pure $ currentSteps == 0
+                , doesDirectoryExist dir
+                , not . null <$> listDirectory dir
+                ]
+
+          if askProceed
+            then do
+              putStrLn [i|El directorio '#{dir}' existe y será borrado.|]
+              putStr "Proceder? [y/n] " >> hFlush stdout
+
+              answer <- getLine
+              if answer == "y"
+                then removeDirectoryRecursive dir
+                else exitError "Cancelado"
+            else pure ()
 
           let stepStr = justifyRight digits '0' . tshow $ currentSteps
               targetFile = dir </> [i|step-#{stepStr}.png|]

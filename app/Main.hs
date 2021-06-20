@@ -9,6 +9,7 @@ import Options.Applicative hiding (action)
 import Parser
 import RIO (readFileUtf8)
 import System.Directory (doesFileExist)
+import Text.Megaparsec (parseMaybe)
 import qualified TuringMachines.Parser as TP
 import Utils
 
@@ -26,7 +27,7 @@ doWork :: Commands -> IO ()
 doWork (Numbered n) = processNumbered n
 doWork (Info path opts) = withExistentFile path (processInfo opts)
 doWork (Eval path input opts) = withExistentFile path $ \pathText -> do
-  case TP.parse pathText of
+  case parseMaybe TP.pProgram pathText of
     Just program -> processEval opts program input
     Nothing -> exitError "El programa no es valido"
 

@@ -1,58 +1,80 @@
 module TuringMachines.Parser where
 
-import Control.Monad (guard)
-import qualified Data.Char as C
 import qualified Data.IntMap.Strict as IntMap
-import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
+import Data.Void
+import Text.Megaparsec
+import Text.Megaparsec.Char
+import qualified Text.Megaparsec.Char.Lexer as L
 import TuringMachines.Core
 import Prelude hiding (lines)
 
-parse :: T.Text -> Maybe (Program Integer)
-parse code =
-  let lines =
-        map (T.words . T.strip)
-          . filter (not . T.null)
-          . filter (not . T.isPrefixOf "--")
-          . map T.strip
-          $ T.lines code
-   in L.foldl' (flip (uncurry M.insert)) M.empty <$> traverse parseSpec lines
+type Parser = Parsec Void T.Text
 
-parseStateName :: T.Text -> Maybe Integer
-parseStateName name = do
-  guard (T.length name > 0)
-  guard (T.all C.isAlphaNum name)
-  pure $ read . T.unpack . T.filter C.isNumber $ name
+pProgram :: Parser (Program Integer)
+pProgram = do
+  separatorSpace
+  items <- pManyStateSpec
+  separatorSpace
+  eof
+  pure $ M.fromList items
 
-parseSpec :: [T.Text] -> Maybe (Integer, Spec Integer)
-parseSpec [state, t0, t1] = do
-  name <- T.stripSuffix ":" state >>= parseStateName
-  tp0 <- parseTransition t0
-  tp1 <- parseTransition t1
-  pure (name, Spec tp0 tp1)
-parseSpec _ = Nothing
+pManyStateSpec :: Parser [(Integer, Spec Integer)]
+pManyStateSpec = do
+  mSpec <- optional (pStateSpec <* horizontalSpace)
+  case mSpec of
+    Nothing -> pure []
+    Just s1 -> do
+      -- This check is needed to make sure a newline is between specs
+      nl <- optional newline
+      case nl of
+        Nothing -> pure [s1]
+        Just _ -> do
+          separatorSpace
+          (s1 :) <$> pManyStateSpec
 
-parseTransition :: T.Text -> Maybe (Transition Integer)
-parseTransition t =
-  if t == "_"
-    then pure Halt
-    else do
-      guard (T.length t >= 2)
-      let (action, state) = T.splitAt 1 t
-      Transition <$> parseAction action <*> parseStateName state
+horizontalSpace :: Parser ()
+horizontalSpace = L.space hspace1 (L.skipLineComment "--") empty
 
-parseAction :: T.Text -> Maybe Action
-parseAction "L" = Just $ MoveTo L
-parseAction "R" = Just $ MoveTo R
-parseAction "0" = Just $ SetTo B0
-parseAction "1" = Just $ SetTo B1
-parseAction _ = Nothing
+separatorSpace :: Parser ()
+separatorSpace =
+  L.space
+    space1
+    (L.skipLineComment "--")
+    empty
 
-parseBit :: Char -> Maybe Bit
-parseBit '0' = Just B0
-parseBit '1' = Just B1
-parseBit _ = Nothing
+pStateSpec :: Parser (Integer, Spec Integer)
+pStateSpec = (,) <$> (pQstate <* hspace1) <*> pSpec
 
-parseTape :: T.Text -> Maybe Tape
-parseTape = fmap (IntMap.fromAscList . L.zip [0 ..]) . traverse parseBit . T.unpack
+pSpec :: Parser (Spec Integer)
+pSpec = do
+  t1 <- pTransition
+  hspace1
+  t2 <- pTransition
+  pure $ Spec t1 t2
+
+pTransition :: Parser (Transition Integer)
+pTransition = (Transition <$> pAction <*> pQstate) <|> Halt <$ char '_'
+
+pQstate :: Parser Integer
+pQstate = char 'q' *> L.decimal
+
+pAction :: Parser Action
+pAction =
+  choice
+    [ SetTo B0 <$ char '0'
+    , SetTo B1 <$ char '1'
+    , MoveTo L <$ char 'L'
+    , MoveTo R <$ char 'R'
+    ]
+
+pTape :: Parser Tape
+pTape = IntMap.fromAscList . zip [0 ..] <$> many pBit
+
+pBit :: Parser Bit
+pBit =
+  choice
+    [ B0 <$ char '0'
+    , B1 <$ char '1'
+    ]

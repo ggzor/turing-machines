@@ -5,6 +5,7 @@ import qualified Data.List as L
 import Options.Applicative hiding (action)
 import RIO.Prelude (readMaybe)
 import RIO.Text (pack)
+import Text.Megaparsec (parseMaybe)
 import TuringMachines.Core
 import qualified TuringMachines.Parser as TP
 
@@ -84,7 +85,7 @@ evalOptions :: Parser Commands
 evalOptions =
   Eval <$> fileArgument
     <*> argument
-      (maybeReader (TP.parseTape . pack))
+      (maybeReader (parseMaybe TP.pTape . pack))
       (metavar "INPUT" <> help "La entrada binaria para el programa")
     <*> ( EvalOptions
             <$> switch

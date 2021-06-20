@@ -5,6 +5,7 @@ import Data.Text (Text)
 import Fmt (fmt, fmtLn, (+|), (|+))
 import Math.Primes (primes)
 import Parser
+import Text.Megaparsec (parseMaybe)
 import TuringMachines.Graphviz
 import TuringMachines.Normalize (getProgram, normalize)
 import TuringMachines.Numbering
@@ -13,7 +14,7 @@ import Utils
 
 processInfo :: InfoOptions -> Text -> IO ()
 processInfo (InfoOptions format) t =
-  case TP.parse t of
+  case parseMaybe TP.pProgram t of
     Nothing -> putStrLn "El programa no es valido"
     Just p -> do
       let label = if length format > 1 then putStrLn else void . pure

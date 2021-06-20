@@ -5,7 +5,7 @@ module Commands.Eval.Runner where
 import Commands.Eval.Parser (EvalOptions (EvalOptions))
 import qualified Commands.Eval.Parser as P
 
-import Control.Lens (makeLenses, use, view, (%=), (+=), (^.))
+import Control.Lens (makeLenses, preview, use, view, (%=), (+=), (^.), _Just)
 import Control.Monad (void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Function ((&))
@@ -143,11 +143,18 @@ processEval' program state@(State _ idx _) = do
           liftIO $ copyFile path targetImage
     DirectoryOut dir -> case generatedImage of
       Nothing -> pure ()
-      Just path -> liftIO do
-        let stepStr = justifyRight 3 '0' . tshow $ currentSteps
-            targetFile = dir </> [i|step-#{stepStr}.png|]
-        createDirectoryIfMissing True dir
-        copyFile path targetFile
+      Just path -> do
+        totalSteps <- preview $ speculativeData . _Just . totalSteps
+        liftIO do
+          let totalString = maybe "" (("/" ++) . show) totalSteps
+              digits = maybe 3 (length . show) totalSteps
+              msgString = [i|Generando imagenes #{currentSteps}#{totalString}|]
+          putStrLn msgString
+
+          let stepStr = justifyRight digits '0' . tshow $ currentSteps
+              targetFile = dir </> [i|step-#{stepStr}.png|]
+          createDirectoryIfMissing True dir
+          copyFile path targetFile
 
   if maybe False (currentSteps >=) limitSteps
     then pure ()

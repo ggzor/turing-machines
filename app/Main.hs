@@ -1,9 +1,12 @@
 module Main where
 
-import Commands.Eval.Parser
+import Commands.Eval.Parser (EvalCommandOptions (..))
 import Commands.Eval.Runner (processEval)
-import Commands.Info
-import Commands.Numbered
+import Commands.Info.Parser (InfoCommandOptions (..))
+import Commands.Info.Runner (processInfo)
+import Commands.Numbered.Parser (NumberedCommandOptions (..))
+import Commands.Numbered.Runner (processNumbered)
+
 import Data.Text (Text)
 import Fmt ((+|), (|+))
 import Options.Applicative hiding (action)
@@ -27,8 +30,8 @@ main = doWork =<< execParser opts
         )
 
 doWork :: Commands -> IO ()
-doWork (Numbered n) = processNumbered n
-doWork (Info path opts) =
+doWork (Numbered (NumberedCommandOptions n)) = processNumbered n
+doWork (Info (InfoCommandOptions path opts)) =
   withExistentFile path \pathText ->
     withValidProgram path pathText (processInfo opts)
 doWork (Eval (EvalCommandOptions path input opts)) =

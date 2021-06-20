@@ -1,4 +1,4 @@
-module Commands.Numbered where
+module Commands.Numbered.Runner where
 
 import TuringMachines.Numbering
 import Utils

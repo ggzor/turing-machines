@@ -94,10 +94,12 @@ executable turing-machines
   other-modules:
       Parser
     , ParserUtils
-    , Commands.Numbered
-    , Commands.Info
     , Commands.Eval.Parser
     , Commands.Eval.Runner
+    , Commands.Info.Parser
+    , Commands.Info.Runner
+    , Commands.Numbered.Parser
+    , Commands.Numbered.Runner
     , SVG
     , Utils
   build-depends:

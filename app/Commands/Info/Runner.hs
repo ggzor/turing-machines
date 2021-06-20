@@ -1,9 +1,9 @@
-module Commands.Info where
+module Commands.Info.Runner where
 
+import Commands.Info.Parser
 import Control.Monad (forM_, void)
 import Fmt (fmt, fmtLn, (+|), (|+))
 import Math.Primes (primes)
-import Parser
 import TuringMachines.Core
 import TuringMachines.Graphviz
 import TuringMachines.Normalize (getProgram, normalize)

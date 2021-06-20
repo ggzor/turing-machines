@@ -13,6 +13,7 @@ import Data.String.Interpolate
 import Data.Text (Text, justifyRight, pack)
 import Fmt (fmt, padRightF, (+|), (|+))
 import Parser (EvalOptions (EvalOptions, doNotEvalSpeculatively, limitSteps, lineByLine, outputDirectory, stepOutput))
+import qualified Parser as P
 import RIO (MonadReader, ReaderT (runReaderT))
 import RIO.FilePath ((</>))
 import RIO.State (MonadState, evalStateT, get)
@@ -51,16 +52,15 @@ makeLenses ''EvalConfiguration
 
 processEval :: EvalOptions -> Program Integer -> Tape -> IO ()
 processEval
-  opts@EvalOptions{doNotEvalSpeculatively, limitSteps, stepOutput, outputDirectory}
+  opts@EvalOptions
+    { doNotEvalSpeculatively
+    , limitSteps
+    , stepOutput
+    , outputDirectory
+    , P.renderOptions
+    }
   program
   tape = do
-    let _renderOptions =
-          RenderOptions
-            { _tapeHeight = 150
-            , _cellSize = 40
-            , _cellGap = 10
-            , _minWidth = 400
-            }
     let _outputModes =
           case (stepOutput, outputDirectory) of
             (Nothing, Nothing) -> [ConsoleOut]
@@ -74,7 +74,7 @@ processEval
 
     _computedRenderOptions <- case _outputModes of
       [ConsoleOut] -> pure Nothing
-      _ -> generateComputedRenderOptions _renderOptions program
+      _ -> generateComputedRenderOptions renderOptions program
 
     let initialQ = 1
     let initialIdx = 0
@@ -93,7 +93,7 @@ processEval
       & ( `runReaderT`
             EvalConfiguration
               { _options = opts
-              , _renderOptions
+              , _renderOptions = renderOptions
               , _computedRenderOptions
               , _outputModes
               , _speculativeData =

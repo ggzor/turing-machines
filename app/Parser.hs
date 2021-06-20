@@ -1,3 +1,5 @@
+{-# LANGUAGE ApplicativeDo #-}
+
 module Parser where
 
 import Data.Foldable (find, fold)
@@ -5,6 +7,7 @@ import qualified Data.List as L
 import Options.Applicative hiding (action)
 import RIO.Prelude (readMaybe)
 import RIO.Text (pack)
+import SVG (RenderOptions (RenderOptions, _cellGap, _cellSize, _minWidth, _tapeHeight))
 import Text.Megaparsec (parseMaybe)
 import TuringMachines.Core
 import qualified TuringMachines.Parser as TP
@@ -25,6 +28,7 @@ data EvalOptions = EvalOptions
   , limitSteps :: Maybe Int
   , stepOutput :: Maybe FilePath
   , outputDirectory :: Maybe FilePath
+  , renderOptions :: !RenderOptions
   }
 
 options :: Parser Commands
@@ -101,14 +105,7 @@ evalOptions =
               )
             <*> optional
               ( option
-                  ( eitherReader
-                      ( maybe
-                          (Left "Debe ser un entero mayor o igual a cero")
-                          Right
-                          . find (>= 0)
-                          . readMaybe
-                      )
-                  )
+                  positiveIntParser
                   ( short 's'
                       <> long "steps"
                       <> metavar "N"
@@ -136,7 +133,68 @@ evalOptions =
                         )
                   )
               )
+            <*> renderOptionsOptions
         )
+
+renderOptionsOptions :: Parser RenderOptions
+renderOptionsOptions = do
+  _minWidth <-
+    option
+      positiveIntParser
+      ( short 'w'
+          <> metavar "INT"
+          <> value 400
+          <> showDefault
+          <> help "El ancho minimo de la salida"
+      )
+
+  _cellSize <-
+    option
+      positiveIntParser
+      ( short 'c'
+          <> metavar "INT"
+          <> value 30
+          <> showDefault
+          <> help "La medida de cada celda de la cinta"
+      )
+
+  _tapeHeight <-
+    option
+      positiveIntParser
+      ( long "tape-height"
+          <> metavar "INT"
+          <> value 120
+          <> showDefault
+          <> help "El alto de la cinta"
+      )
+
+  _cellGap <-
+    option
+      positiveIntParser
+      ( long "cell-gap"
+          <> metavar "INT"
+          <> value 10
+          <> showDefault
+          <> help "La separación entre las celdas"
+      )
+
+  pure
+    RenderOptions
+      { _tapeHeight
+      , _cellSize
+      , _cellGap
+      , _minWidth
+      }
+
+positiveIntParser :: ReadM Int
+positiveIntParser =
+  eitherReader
+    ( maybe
+        (Left "Debe ser un entero mayor o igual a cero")
+        Right
+        . find (>= 0)
+        . readMaybe
+    )
 
 fileArgument :: Parser FilePath
 fileArgument = argument str (metavar "FILE" <> help "El archivo que contiene el programa")

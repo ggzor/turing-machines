@@ -21,6 +21,7 @@ import RIO.Prelude (decodeUtf8', readMaybe)
 import System.Exit
 import System.IO.Temp (emptySystemTempFile)
 import System.Process.Typed
+import Text.RawString.QQ
 import Text.XML (def, parseText, renderText)
 import Text.XML.Lens
 
@@ -123,16 +124,27 @@ printImage renderSettings program state = do
                     & root . attr "height" .~ [i|#{newHeight}pt|]
                     & root . attr "width" .~ [i|#{newWidth}pt|]
                     & root . attr "viewBox" .~ newViewBox
-                    & root . nodes %~ (++ renderTape renderSettings state)
+                    & root . nodes %~ (whiteBackground ++) . (++ renderTape renderSettings state)
             pure . TL.toStrict . renderText def $ newDoc
         )
   case result of
     Just newDoc -> do
       tempPath <- emptySystemTempFile "turing-machines.png"
       runProcess_ . setStdin (encodeAsInput newDoc) $
-        proc "magick" ["convert", "-", tempPath]
+        proc "rsvg-convert" ["-o", tempPath]
       pure $ Just tempPath
     Nothing -> putStrLn "Failed to process document" >> pure Nothing
+
+whiteBackground :: [Node]
+whiteBackground =
+  let templateValue =
+        [r|
+<svg xmlns="http://www.w3.org/2000/svg">
+ <rect width="100%" height="100%" fill="white" />
+</svg>
+          |]
+      txt = view (root . nodes) <$> parseText def templateValue
+   in fromRight [] txt
 
 template :: RenderSettings -> NodeSettings -> [Node]
 template renderSettings NodeSettings{idx, bit, originalIdx, stateIdx} =
@@ -154,13 +166,13 @@ template renderSettings NodeSettings{idx, bit, originalIdx, stateIdx} =
         width="#{size}" height="#{size}" stroke="\#000" fill="#{fill}">
   </rect>
   <text x="#{baseX + midSize}"
-        y="#{baseY + midSize}"
+        y="#{baseY + midSize + midSize `div` 3}"
         font-family="Times,serif" font-size="#{midSize}"
         dominant-baseline="middle" text-anchor="middle" fill="\#000">
     #{bit}
   </text>
   <text x="#{baseX + midSize}"
-        y="#{baseY - 10}"
+        y="#{baseY - midSize `div` 4}"
         font-family="Times,serif" font-size="#{size `div` 3}"
         dominant-baseline="middle" text-anchor="middle" fill="\#000">
     #{originalIdx}

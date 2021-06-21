@@ -6,7 +6,7 @@ import Commands.Eval.Parser (EvalOptions (EvalOptions))
 import qualified Commands.Eval.Parser as P
 
 import Control.Lens (makeLenses, preview, use, view, (%=), (+=), (^.), _Just)
-import Control.Monad (void)
+import Control.Monad (foldM, void)
 import Control.Monad.IO.Class (liftIO)
 import Data.Function ((&))
 import qualified Data.IntMap.Strict as IntMap
@@ -159,12 +159,13 @@ processEval' program state@(State _ idx _) = do
           putStrLn msgString
 
           askProceed <-
-            and
-              <$> sequence
-                [ pure $ currentSteps == 0
-                , doesDirectoryExist dir
-                , not . null <$> listDirectory dir
-                ]
+            foldM
+              (\acc next -> if acc then next else pure False)
+              True
+              [ pure $ currentSteps == 0
+              , doesDirectoryExist dir
+              , not . null <$> listDirectory dir
+              ]
 
           if askProceed
             then do

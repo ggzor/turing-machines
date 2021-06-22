@@ -7,7 +7,6 @@ import TuringMachines.Eval (readTape)
 import TuringMachines.Graphviz
 
 import Control.Lens (both, makeLenses, mapMOf)
-import Data.Either (fromRight)
 import Data.Function ((&))
 import Data.String.Interpolate
 import Data.Text (Text, splitOn, unpack)
@@ -135,16 +134,17 @@ printImage renderSettings program state = do
       pure $ Just tempPath
     Nothing -> putStrLn "Failed to process document" >> pure Nothing
 
+parseSVG :: Text -> [Node]
+parseSVG = either (const []) (view (root . nodes)) . parseText def . TL.fromStrict
+
 whiteBackground :: [Node]
 whiteBackground =
-  let templateValue =
-        [r|
+  parseSVG
+    [r|
 <svg xmlns="http://www.w3.org/2000/svg">
  <rect width="100%" height="100%" fill="white" />
 </svg>
-          |]
-      txt = view (root . nodes) <$> parseText def templateValue
-   in fromRight [] txt
+|]
 
 template :: RenderSettings -> NodeSettings -> [Node]
 template renderSettings NodeSettings{idx, bit, originalIdx, stateIdx} =
@@ -178,9 +178,8 @@ template renderSettings NodeSettings{idx, bit, originalIdx, stateIdx} =
     #{originalIdx}
   </text>
 </svg>
-          |]
-      txt = view (root . nodes) <$> parseText def templateValue
-   in fromRight [] txt
+|]
+   in parseSVG templateValue
 
 renderTape :: RenderSettings -> State Integer -> [Node]
 renderTape renderSettings (State _ idx tape) =

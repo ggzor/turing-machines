@@ -5,7 +5,7 @@ module Commands.Eval.Parser where
 import Data.Text (pack)
 import Options.Applicative
 import ParserUtils
-import SVG (RenderOptions (RenderOptions), _cellGap, _cellSize, _minWidth, _tapeHeight)
+import SVG (RenderOptions (RenderOptions, _stepTextSize), _cellGap, _cellSize, _minWidth, _tapeHeight)
 import Text.Megaparsec (parseMaybe)
 import TuringMachines.Core
 import qualified TuringMachines.Parser as TP
@@ -114,10 +114,21 @@ renderOptionsOptions = do
           <> help "La separación entre las celdas"
       )
 
+  _stepTextSize <-
+    option
+      positiveIntParser
+      ( long "step-text-size"
+          <> metavar "INT"
+          <> value 30
+          <> showDefault
+          <> help "El tamaño del texto que muestra la cantidad de pasos"
+      )
+
   pure
     RenderOptions
       { _tapeHeight
       , _cellSize
       , _cellGap
       , _minWidth
+      , _stepTextSize
       }

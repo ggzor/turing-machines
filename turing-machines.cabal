@@ -96,6 +96,7 @@ executable turing-machines
     , ParserUtils
     , Commands.Eval.Parser
     , Commands.Eval.Runner
+    , Commands.Eval.Speculative
     , Commands.Info.Parser
     , Commands.Info.Runner
     , Commands.Numbered.Parser

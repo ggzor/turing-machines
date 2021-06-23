@@ -2,6 +2,7 @@
 
 module SVG where
 
+import Commands.Eval.Speculative
 import TuringMachines.Core
 import TuringMachines.Eval (readTape)
 import TuringMachines.Graphviz
@@ -28,6 +29,7 @@ data RenderOptions = RenderOptions
   , _cellSize :: !Int
   , _cellGap :: !Int
   , _minWidth :: !Int
+  , _stepTextSize :: !Int
   }
 
 data StateRenderOptions = StateRenderOptions
@@ -46,6 +48,7 @@ data RenderSettings = RenderSettings
   { _configuration :: !RenderOptions
   , _computed :: !ComputedRenderOptions
   , _state :: !StateRenderOptions
+  , _speculativeData :: !(Maybe SpeculativeData)
   }
 
 makeLenses ''RenderSettings
@@ -54,8 +57,8 @@ makeLenses ''ComputedRenderOptions
 makeLenses ''RenderOptions
 
 printImage :: RenderSettings -> Program Integer -> State Integer -> IO (Maybe FilePath)
-printImage renderSettings program state = do
-  mSvg <- graphvizSvg (generateStatefulGraph program state)
+printImage renderSettings program pState = do
+  mSvg <- graphvizSvg (generateStatefulGraph program pState)
   let result =
         ( do
             doc <- mSvg
@@ -69,6 +72,8 @@ printImage renderSettings program state = do
                 newViewBox = T.unwords [x, y, tshow newWidth, tshow newHeight]
                 graphWidth = renderSettings ^. computed . graphData . width
                 graphDx = fromIntegral $ (newWidth - graphWidth) `div` 2
+                graphDy = fromIntegral $ renderSettings ^. configuration . stepTextSize
+                currentStep = renderSettings ^. state . steps
 
             let newDoc =
                   doc
@@ -77,8 +82,9 @@ printImage renderSettings program state = do
                     & root . attr "viewBox" .~ newViewBox
                     & root . nodes
                       %~ (whiteBackground ++)
-                        . (++ renderTape renderSettings state)
-                        . transformWithGroup (graphDx, 0)
+                        . (++ renderTape renderSettings pState)
+                        . (++ renderStepText renderSettings currentStep)
+                        . transformWithGroup (graphDx, graphDy)
             pure . TL.toStrict . renderText def $ newDoc
         )
   case result of
@@ -94,18 +100,19 @@ computedRenderOptionsFor renderOptions _graphData@GraphRenderData{_width, _heigh
   let gap = renderOptions ^. cellGap
       size = renderOptions ^. cellSize
       _finalWidth = max (renderOptions ^. minWidth) _width
-      _finalHeight = _height + renderOptions ^. tapeHeight
+      _finalHeight = _height + renderOptions ^. tapeHeight + renderOptions ^. stepTextSize
       _cellCount = (_finalWidth + gap) `div` (size + gap)
    in ComputedRenderOptions{_graphData, _cellCount, _finalWidth, _finalHeight}
 
 renderTape :: RenderSettings -> State Integer -> [Node]
 renderTape renderSettings (State _ idx tape) =
   let targetWidth = renderSettings ^. computed . finalWidth
+      targetHeight = renderSettings ^. computed . finalHeight
       count = renderSettings ^. computed . cellCount
       size = renderSettings ^. configuration . cellSize
       gap = renderSettings ^. configuration . cellGap
 
-      marginTop = renderSettings ^. computed . graphData . height
+      marginTop = targetHeight - renderSettings ^. configuration . tapeHeight
       marginLeft = (targetWidth - (count * size + (count - 1) * gap)) `div` 2
 
       (minIdx, maxIdx) = pivotBounds count (renderSettings ^. state . pivot)
@@ -163,6 +170,28 @@ tapeCellTemplate TapeCellSettings{realIdx, baseX, baseY, value, size, isActive} 
 </svg>
 |]
    in parseSVG templateValue
+
+renderStepText :: RenderSettings -> Int -> [Node]
+renderStepText renderSettings step =
+  let steps = renderSettings ^? speculativeData . _Just . totalSteps
+      stepTextHeight = renderSettings ^. configuration . stepTextSize
+      stepTextContent =
+        show step
+          ++ maybe "" ((" / " ++) . show) steps
+      targetX = 10 :: Int
+      targetY = stepTextHeight `div` 2 + 10
+      template =
+        [i|
+<svg xmlns="http://www.w3.org/2000/svg">
+  <text x="#{targetX}"
+        y="#{targetY}"
+        font-family="Times,serif" font-size="#{stepTextHeight - 10}"
+        text-anchor="start" fill="\#000">
+    #{stepTextContent}
+  </text>
+</svg>
+|]
+   in parseSVG template
 
 whiteBackground :: [Node]
 whiteBackground =

@@ -4,6 +4,7 @@ module Commands.Eval.Runner where
 
 import Commands.Eval.Parser (EvalOptions (EvalOptions))
 import qualified Commands.Eval.Parser as P
+import Commands.Eval.Speculative
 
 import Control.Lens (makeLenses, preview, use, view, (%=), (+=), (^.), _Just)
 import Control.Monad (foldM, void)
@@ -21,7 +22,7 @@ import Graphviz
 import RIO (MonadReader, ReaderT (runReaderT))
 import RIO.FilePath ((</>))
 import RIO.State (MonadState, evalStateT, get)
-import SVG
+import SVG hiding (speculativeData, _speculativeData)
 import System.Console.ANSI
 import System.Directory (
   copyFile,
@@ -42,14 +43,6 @@ data EvalOutputMode
   | DirectoryOut FilePath
   deriving
     (Ord, Eq)
-
-data SpeculativeData = SpeculativeData
-  { _totalSteps :: !Int
-  , _minimumIdx :: !Int
-  , _maximumIdx :: !Int
-  }
-
-makeLenses ''SpeculativeData
 
 data EvalConfiguration = EvalConfiguration
   { _options :: !EvalOptions
@@ -132,7 +125,13 @@ processEval' program state@(State _ idx _) = do
         pivot %= relocatePivot (computed ^. cellCount) idx
         renderOptions <- view renderOptions
         stateRenderOptions <- get
-        let settings = RenderSettings renderOptions computed stateRenderOptions
+        speculativeData <- view speculativeData
+        let settings =
+              RenderSettings
+                renderOptions
+                computed
+                stateRenderOptions
+                speculativeData
         liftIO $ printImage settings program state
       _ -> pure Nothing
 
@@ -213,30 +212,6 @@ pprintState program (State q idx tape) = do
   where
     tapeInterval :: Index -> Index -> String
     tapeInterval start end = bitToStr . flip readTape tape <$> [start .. end - 1]
-
-speculativeEval :: Program Integer -> State Integer -> Maybe Int -> SpeculativeData
-speculativeEval program state@(State _ idx tape) limitSteps =
-  go
-    state
-    SpeculativeData
-      { _totalSteps = 0
-      , _minimumIdx = min idx (maybe idx fst (IntMap.lookupMin tape))
-      , _maximumIdx = max idx (maybe idx fst (IntMap.lookupMin tape))
-      }
-  where
-    go s prevData =
-      if maybe False (prevData ^. totalSteps >=) limitSteps
-        then prevData
-        else case eval program s of
-          Nothing -> prevData
-          Just newState@(State _ newIdx _) ->
-            go
-              newState
-              SpeculativeData
-                { _totalSteps = prevData ^. totalSteps + 1
-                , _minimumIdx = min (prevData ^. minimumIdx) newIdx
-                , _maximumIdx = max (prevData ^. maximumIdx) newIdx
-                }
 
 relocatePivot :: Int -> Index -> Index -> Index
 relocatePivot n newIdx pivot =

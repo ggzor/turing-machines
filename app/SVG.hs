@@ -66,14 +66,19 @@ printImage renderSettings program state = do
 
             let newWidth = renderSettings ^. computed . finalWidth
                 newHeight = renderSettings ^. computed . finalHeight
-            let newViewBox = T.unwords [x, y, tshow newWidth, tshow newHeight]
+                newViewBox = T.unwords [x, y, tshow newWidth, tshow newHeight]
+                graphWidth = renderSettings ^. computed . graphData . width
+                graphDx = fromIntegral $ (newWidth - graphWidth) `div` 2
 
             let newDoc =
                   doc
                     & root . attr "height" .~ [i|#{newHeight}pt|]
                     & root . attr "width" .~ [i|#{newWidth}pt|]
                     & root . attr "viewBox" .~ newViewBox
-                    & root . nodes %~ (whiteBackground ++) . (++ renderTape renderSettings state)
+                    & root . nodes
+                      %~ (whiteBackground ++)
+                        . (++ renderTape renderSettings state)
+                        . transformWithGroup (graphDx, 0)
             pure . TL.toStrict . renderText def $ newDoc
         )
   case result of

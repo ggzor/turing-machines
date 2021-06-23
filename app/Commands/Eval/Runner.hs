@@ -17,6 +17,7 @@ import Data.Text (justifyRight)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Text.Utils (tshow)
+import Graphviz
 import RIO (MonadReader, ReaderT (runReaderT))
 import RIO.FilePath ((</>))
 import RIO.State (MonadState, evalStateT, get)
@@ -84,7 +85,7 @@ processEval
 
     _computedRenderOptions <- case _outputModes of
       [ConsoleOut] -> pure Nothing
-      _ -> generateComputedRenderOptions renderOptions program
+      _ -> fmap (computedRenderOptionsFor renderOptions) <$> getGraphRenderData program
 
     let initialQ = 1
     let initialIdx = 0
@@ -128,7 +129,7 @@ processEval' program state@(State _ idx _) = do
   generatedImage <-
     view computedRenderOptions >>= \case
       Just computed -> do
-        pivot %= relocatePivot (computed ^. cellsCount) idx
+        pivot %= relocatePivot (computed ^. cellCount) idx
         renderOptions <- view renderOptions
         stateRenderOptions <- get
         let settings = RenderSettings renderOptions computed stateRenderOptions

@@ -101,6 +101,7 @@ executable turing-machines
     , Commands.Numbered.Parser
     , Commands.Numbered.Runner
     , SVG
+    , Graphviz
     , Utils
   build-depends:
       turing-machines

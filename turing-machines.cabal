@@ -79,6 +79,7 @@ library
     TuringMachines.Quads
     TuringMachines.Show
     Utils.QString
+    Utils.Parsing
     Math.Primes
   build-depends:
       base

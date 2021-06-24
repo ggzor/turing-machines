@@ -13,7 +13,7 @@ import Data.Text.Utils (tshow)
 
 pprint :: (Ord a, Show a) => Program a -> Text
 pprint program =
-  T.unlines
+  T.intercalate "\n"
     . fmap
       ( \(q, spec) ->
           T.unwords

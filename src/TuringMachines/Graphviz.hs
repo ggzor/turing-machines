@@ -37,7 +37,7 @@ generateStatefulGraph program (State q idx tape) =
 
 fillBaseTemplate :: T.Text -> T.Text
 fillBaseTemplate innerText =
-  T.unlines . tail . T.lines $
+  T.intercalate "\n" . tail . T.lines $
     [i|
 digraph TuringMachine {
   rankdir="LR"

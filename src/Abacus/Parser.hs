@@ -1,7 +1,9 @@
 module Abacus.Parser where
 
 import Abacus.Core
+import Abacus.Macro
 
+import Data.Function ((&))
 import Data.Text (Text)
 import qualified Data.Text as T
 import Data.Void
@@ -11,14 +13,6 @@ import qualified Text.Megaparsec.Char.Lexer as L
 import Utils.Parsing
 
 type Parser = Parsec Void Text
-
--- MacroCall is the only dirty trick here,
--- it is used with GoTo to represent a macro expansion
-data MacroTag = MacroBegin | MacroEnd | NamedTag Text | MacroCall Text [Text] deriving (Eq, Show)
-data CellRef = CellNumber Integer | CellNamed Text deriving (Eq, Show)
-
-data Macro = Macro Text [Text] (FlowChart MacroTag CellRef) deriving (Eq, Show)
-type Program = [Macro]
 
 pProgram :: Parser Program
 pProgram = do
@@ -40,22 +34,20 @@ pFlowChart = do
   untaggedStartSeq <- pSeq MacroBegin <* horizontalSpace
   remainingTaggedSeqs <- forceNL (pure []) $ pTaggedSeq `trySepBy` verticalSpace
   let allSeqs = untaggedStartSeq : remainingTaggedSeqs
-      mergeSeqs genSeq (seqs, curTag) =
-        let nextSeq@(Seq newTag instructions _) = genSeq curTag
-         in if newTag == MacroBegin && null instructions
-              then (seqs, curTag)
-              else (nextSeq : seqs, newTag)
-  pure . fst $ foldr mergeSeqs ([], MacroEnd) allSeqs
+  pure $
+    allSeqs & filter \case
+      Seq MacroBegin [] -> False
+      _ -> True
 
-pTaggedSeq :: Parser (MacroTag -> Seq MacroTag CellRef)
+pTaggedSeq :: Parser (Seq MacroTag CellRef)
 pTaggedSeq = do
   tagName <- try (anySpace *> pIdentifierName <* hsymbol ":")
   forceNL (fail "missing newline after colon") $ pSeq (NamedTag tagName)
 
-pSeq :: MacroTag -> Parser (MacroTag -> Seq MacroTag CellRef)
+pSeq :: MacroTag -> Parser (Seq MacroTag CellRef)
 pSeq begin = do
   inc <- try (anySpace *> pNode) `trySepBy` verticalSpace
-  pure $ \end -> Seq begin inc end
+  pure $ Seq begin inc
 
 pNode :: Parser (Node MacroTag CellRef)
 pNode =

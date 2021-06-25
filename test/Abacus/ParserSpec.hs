@@ -1,5 +1,6 @@
 module Abacus.ParserSpec where
 
+import Abacus.Macro
 import Abacus.Parser
 
 import Abacus.Core
@@ -66,7 +67,7 @@ test(x, y):
 suc():
   1+
 |]
-    , Just [Macro "suc" [] [Seq MacroBegin [Increase (CellNumber 1)] MacroEnd]]
+    , Just [Macro "suc" [] [Seq MacroBegin [Increase (CellNumber 1)]]]
     )
   ,
     ( "should not parse same line instructions"
@@ -91,7 +92,6 @@ suc():
                 [ Increase (CellNumber 1)
                 , Increase (CellNumber 2)
                 ]
-                MacroEnd
             ]
         ]
     )
@@ -109,7 +109,6 @@ suc(x):
                 MacroBegin
                 [ Increase (CellNamed "x")
                 ]
-                MacroEnd
             ]
         ]
     )
@@ -128,7 +127,6 @@ suc(x):
                 (NamedTag "s")
                 [ Increase (CellNamed "x")
                 ]
-                MacroEnd
             ]
         ]
     )
@@ -158,11 +156,9 @@ sg(x, r):
                 [ Decrease (CellNamed "x") (NamedTag "e")
                 , Increase (CellNamed "r")
                 ]
-                (NamedTag "e")
             , Seq
                 (NamedTag "e")
                 []
-                MacroEnd
             ]
         ]
     )
@@ -186,11 +182,9 @@ trans(x, y):
                 , Increase (CellNamed "y")
                 , GoTo (NamedTag "s")
                 ]
-                (NamedTag "e")
             , Seq
                 (NamedTag "e")
                 []
-                MacroEnd
             ]
         ]
     )
@@ -214,12 +208,10 @@ sg(x, r):
                 , Decrease (CellNamed "t") (NamedTag "e")
                 , Increase (CellNamed "r")
                 ]
-                (NamedTag "e")
             , Seq
                 (NamedTag "e")
                 [ GoTo (MacroCall "zero" ["t"])
                 ]
-                MacroEnd
             ]
         ]
     )

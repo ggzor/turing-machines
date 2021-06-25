@@ -67,6 +67,8 @@ library
   import:              shared-properties
   hs-source-dirs:      src
   exposed-modules:
+    Abacus.Core
+    Abacus.Parser
     Data.List.Utils
     Data.Text.Utils
     TuringMachines.Core

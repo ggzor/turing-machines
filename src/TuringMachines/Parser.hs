@@ -15,9 +15,9 @@ type Parser = Parsec Void T.Text
 
 pProgram :: Parser (Program Integer)
 pProgram = do
-  spaceConsumer
-  items <- sepByReqNewLine (pStateSpec <* horizontalSpace)
-  spaceConsumer
+  anySpace
+  items <- (anySpace *> pStateSpec) `trySepBy` verticalSpace
+  anySpace
   eof
   pure $ M.fromList items
 

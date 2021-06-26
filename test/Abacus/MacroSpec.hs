@@ -1,13 +1,11 @@
 module Abacus.MacroSpec where
 
 import Abacus.Macro
-import Abacus.Parser
+import MacroUtils
 
 import Control.Monad.Except
 import qualified Data.Map.Strict as M
-import Data.Text (Text)
 import Test.Hspec
-import Text.Megaparsec (parseMaybe)
 import Text.RawString.QQ
 
 emptyIndex :: MacroIndex
@@ -80,15 +78,3 @@ spec =
       it name $
         M.lookup macroName testMacrosImplicits
           `shouldBe` Just expected
-
-createIndexOf :: Text -> MacroIndex
-createIndexOf =
-  maybe (error "Invalid program in test") indexProgram . parseMaybe pProgram
-
-implicitsOf :: MacroIndex -> MacroMapping Implicits
-implicitsOf =
-  either
-    (error . ("Unable to generate implicits: " ++) . show)
-    id
-    . runExcept
-    . resolveImplicits

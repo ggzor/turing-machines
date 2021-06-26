@@ -1,4 +1,4 @@
-module Abacus.MacroCompleteExampleSpec where
+module Abacus.Macro.CompleteExample.ResolveImplicitsSpec where
 
 import Abacus.Macro
 import MacroUtils

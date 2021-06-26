@@ -68,6 +68,7 @@ library
   hs-source-dirs:      src
   exposed-modules:
     Abacus.Core
+    Abacus.Macro
     Abacus.Parser
     Data.List.Utils
     Data.Text.Utils
@@ -87,6 +88,7 @@ library
       base
     , containers
     , megaparsec
+    , mtl
     , string-interpolate
     , text
 
@@ -137,6 +139,7 @@ test-suite turing-machines-test
     , containers
     , hspec
     , megaparsec
+    , mtl
     , raw-strings-qq
     , text
   type:                exitcode-stdio-1.0

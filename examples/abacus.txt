@@ -46,6 +46,25 @@ sum(x, y, r):
   copy(x, r)
   copy(y, r)
 
+mult(x, y, r):
+  copy(x, i)
+  s:
+    i- e
+    sum(y, r, acc)
+    trans(acc, r)
+    s
+  e:
+
+exp(x, y, r):
+  copy(x, i)
+  r+
+  s:
+    i- e
+    mult(x, r, acc)
+    trans(acc, r)
+    s
+  e:
+
 monus(x, y, r):
   trans(x, r)
   trans(y, t)
@@ -131,23 +150,4 @@ nthprime(n, r):
     l
   e:
     zero(t)
-
-mult(x, y, r):
-  copy(x, i)
-  s:
-    i- e
-    sum(y, r, acc)
-    trans(acc, r)
-    s
-  e:
-
-exp(x, y, r):
-  copy(x, i)
-  r+
-  s:
-    i- e
-    mult(x, r, acc)
-    trans(acc, r)
-    s
-  e:
 

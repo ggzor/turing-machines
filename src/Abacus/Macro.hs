@@ -13,8 +13,8 @@ import Data.Text.Utils (tshow)
 
 -- MacroCall is the only dirty trick here,
 -- it is used with GoTo to represent a macro expansion
-data MacroTag = MacroBegin | NamedTag Text | MacroCall Text [Text] deriving (Eq, Ord, Show)
-data CellRef = CellNumber Integer | CellNamed Text deriving (Eq, Show)
+data MacroTag = MacroBegin | NamedTag Text | MacroCall Text [CellRef] deriving (Eq, Ord, Show)
+data CellRef = CellNumber Integer | CellNamed Text deriving (Eq, Ord, Show)
 
 data Macro = Macro Text [Text] (FlowChart MacroTag CellRef) deriving (Eq, Show)
 type Program = [Macro]
@@ -68,7 +68,11 @@ getNamedCells fc = L.nub $ do
   nodes >>= \case
     Increase (CellNamed n) -> [n]
     Decrease (CellNamed n) _ -> [n]
-    GoTo (MacroCall _ cells) -> cells
+    GoTo (MacroCall _ cells) ->
+      concat $
+        cells <&> \case
+          CellNamed n -> [n]
+          _ -> []
     _ -> []
 
 lookupWithMacroName :: (MonadError MacroError m) => MacroName -> M.Map MacroName a -> m a
@@ -96,7 +100,7 @@ reifyImplicits (macroIndex, macroImplicits) =
           Seq begin <$> nodes `forM` \case
             GoTo (MacroCall calledName args) -> do
               (tagged, implicits) <- lookupWithMacroName calledName macroImplicits
-              let newArgs = args ++ map (T.append "$" . tshow) [1 .. (length tagged + fromIntegral implicits)]
+              let newArgs = args ++ map (CellNamed . T.append "$" . tshow) [1 .. (length tagged + fromIntegral implicits)]
               pure $ GoTo (MacroCall calledName newArgs)
             other -> pure other
    in mapM_ reifyImplicitsOf (M.keys macroIndex) `execStateT` M.empty

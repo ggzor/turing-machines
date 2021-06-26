@@ -59,7 +59,7 @@ pNode =
           <*> (NamedTag <$> pIdentifier)
     , try $ do
         name <- pIdentifier
-        args <- hbetweenParens (pIdentifier `sepBy` hsymbol ",")
+        args <- hbetweenParens (pCellRef `sepBy` hsymbol ",")
         notFollowedBy $ char ':'
         pure $ GoTo (MacroCall name args)
     , GoTo . NamedTag <$> pIdentifier <* notFollowedBy (choice [char ':', char '('])

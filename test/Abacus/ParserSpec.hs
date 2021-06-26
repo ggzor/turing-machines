@@ -204,13 +204,13 @@ sg(x, r):
             ["x", "r"]
             [ Seq
                 MacroBegin
-                [ GoTo (MacroCall "trans" ["x", "t"])
+                [ GoTo (MacroCall "trans" [CellNamed "x", CellNamed "t"])
                 , Decrease (CellNamed "t") (NamedTag "e")
                 , Increase (CellNamed "r")
                 ]
             , Seq
                 (NamedTag "e")
-                [ GoTo (MacroCall "zero" ["t"])
+                [ GoTo (MacroCall "zero" [CellNamed "t"])
                 ]
             ]
         ]

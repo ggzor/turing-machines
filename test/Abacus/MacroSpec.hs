@@ -10,18 +10,6 @@ import Test.Hspec
 import Text.Megaparsec (parseMaybe)
 import Text.RawString.QQ
 
-createIndexOf :: Text -> MacroIndex
-createIndexOf =
-  maybe (error "Invalid program in test") indexProgram . parseMaybe pProgram
-
-implicitsOf :: MacroIndex -> MacroMapping Implicits
-implicitsOf =
-  either
-    (error . ("Unable to generate implicits: " ++) . show)
-    id
-    . runExcept
-    . resolveImplicits
-
 emptyIndex :: MacroIndex
 emptyIndex = createIndexOf [r||]
 
@@ -92,3 +80,15 @@ spec =
       it name $
         M.lookup macroName testMacrosImplicits
           `shouldBe` Just expected
+
+createIndexOf :: Text -> MacroIndex
+createIndexOf =
+  maybe (error "Invalid program in test") indexProgram . parseMaybe pProgram
+
+implicitsOf :: MacroIndex -> MacroMapping Implicits
+implicitsOf =
+  either
+    (error . ("Unable to generate implicits: " ++) . show)
+    id
+    . runExcept
+    . resolveImplicits

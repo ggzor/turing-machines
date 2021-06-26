@@ -76,7 +76,7 @@ pIdentifier :: Parser Text
 pIdentifier = lexeme pIdentifierName
 
 pIdentifierName :: Parser Text
-pIdentifierName = T.pack <$> ((:) <$> letterChar <*> many (alphaNumChar <|> char '_'))
+pIdentifierName = T.pack <$> ((:) <$> (letterChar <|> char '$') <*> many (alphaNumChar <|> char '_'))
 
 lexeme :: Parser a -> Parser a
 lexeme = L.lexeme horizontalSpace

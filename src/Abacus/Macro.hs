@@ -8,6 +8,8 @@ import Data.Function ((&))
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Text (Text)
+import qualified Data.Text as T
+import Data.Text.Utils (tshow)
 
 -- MacroCall is the only dirty trick here,
 -- it is used with GoTo to represent a macro expansion
@@ -39,19 +41,15 @@ resolveImplicits :: (MonadError MacroError m) => MacroIndex -> m (MacroMapping I
 resolveImplicits macroIndex =
   let resolveImplicitsOf :: MacroName -> ResolveImplicitsT Implicits
       resolveImplicitsOf macroName =
-        M.lookup macroName macroIndex & maybe
-          (throwError (UndefinedMacro macroName))
-          \(Macro _ params fc) -> do
+        lookupWithMacroName macroName macroIndex
+          >>= \(Macro _ params fc) -> do
             env <- get
             newEnv <-
               M.lookup macroName env & flip maybe (const $ pure env) do
                 flip (M.insert macroName) env <$> do
                   (getNamedCells fc L.\\ params,) <$> collectCallImplicits fc
             put newEnv
-            M.lookup macroName newEnv
-              & maybe
-                (throwError (UndefinedMacro macroName))
-                pure
+            lookupWithMacroName macroName newEnv
       collectCallImplicits :: FlowChart MacroTag CellRef -> ResolveImplicitsT Integer
       collectCallImplicits fc =
         (\l -> if null l then 0 else maximum l) . concat <$> do
@@ -72,3 +70,33 @@ getNamedCells fc = L.nub $ do
     Decrease (CellNamed n) _ -> [n]
     GoTo (MacroCall _ cells) -> cells
     _ -> []
+
+lookupWithMacroName :: (MonadError MacroError m) => MacroName -> M.Map MacroName a -> m a
+lookupWithMacroName macroName env =
+  M.lookup macroName env & maybe (throwError (UndefinedMacro macroName)) pure
+
+type MacroDataMapping = (MacroIndex, MacroMapping Implicits)
+reifyImplicits :: (MonadError MacroError m) => MacroDataMapping -> m MacroIndex
+reifyImplicits (macroIndex, macroImplicits) =
+  let reifyImplicitsOf :: (MonadError MacroError m) => MacroName -> StateT MacroIndex m Macro
+      reifyImplicitsOf macroName = do
+        env <- get
+        newEnv <-
+          M.lookup macroName env & flip maybe (const $ pure env) do
+            (Macro _ params fc) <- lookupWithMacroName macroName macroIndex
+            (tagged, implicits) <- lookupWithMacroName macroName macroImplicits
+            flip (M.insert macroName) env <$> do
+              let newParams = params ++ tagged ++ map (T.append "$" . tshow) [1 .. implicits]
+              Macro macroName newParams <$> rewriteCalls fc
+        put newEnv
+        lookupWithMacroName macroName newEnv
+      rewriteCalls :: (MonadError MacroError m) => FlowChart MacroTag CellRef -> m (FlowChart MacroTag CellRef)
+      rewriteCalls fc = do
+        fc `forM` \(Seq begin nodes) ->
+          Seq begin <$> nodes `forM` \case
+            GoTo (MacroCall calledName args) -> do
+              (tagged, implicits) <- lookupWithMacroName calledName macroImplicits
+              let newArgs = args ++ map (T.append "$" . tshow) [1 .. (length tagged + fromIntegral implicits)]
+              pure $ GoTo (MacroCall calledName newArgs)
+            other -> pure other
+   in mapM_ reifyImplicitsOf (M.keys macroIndex) `execStateT` M.empty

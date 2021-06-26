@@ -29,3 +29,11 @@ implicitsOf =
     id
     . runExcept
     . resolveImplicits
+
+reifyImplicitsOf :: MacroDataMapping -> MacroIndex
+reifyImplicitsOf =
+  either
+    (error . ("Unable to generate implicits: " ++) . show)
+    id
+    . runExcept
+    . reifyImplicits

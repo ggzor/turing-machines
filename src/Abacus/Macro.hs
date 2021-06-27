@@ -204,3 +204,58 @@ traverseNodes :: Applicative m => (Node tag a -> m (Node tag b)) -> FlowChart ta
 traverseNodes f fc =
   fc `for` \(Seq begin nodes) ->
     Seq begin <$> nodes `for` f
+
+compile :: (MonadError MacroError m) => MacroIndex -> MacroName -> m (FlowChart Integer Integer)
+compile macroIndex macroName = do
+  Macro _ params fc <- lookupWithMacroName macroName macroIndex
+  newFc <- expandMacros macroIndex fc `evalStateT` TagGen M.empty
+  let cellRefAssignation = M.fromList $ zip (CellNamed <$> params) (CellNumber <$> [1 ..])
+  pure . fromMaybe (error "")
+    . (unwrapNumbered <=< enumerateTags)
+    . renameCellRefs cellRefAssignation
+    $ newFc
+
+unwrapNumbered :: FlowChart tag CellRef -> Maybe (FlowChart tag Integer)
+unwrapNumbered fc =
+  fc `for` \(Seq begin nodes) ->
+    Seq begin
+      <$> nodes `for` \case
+        Increase (CellNumber i) -> Just $ Increase i
+        Decrease (CellNumber i) tag -> Just $ Decrease i tag
+        GoTo other -> Just $ GoTo other
+        _ -> Nothing
+
+enumerateTags :: (Ord tag) => FlowChart tag a -> Maybe (FlowChart Integer a)
+enumerateTags fc =
+  let uniqueTags = L.nub $ allTags fc
+      tagMapping = M.fromList $ zip uniqueTags [0 ..]
+   in retagWith tagMapping fc
+
+retagWith :: (Ord a) => M.Map a b -> FlowChart a cells -> Maybe (FlowChart b cells)
+retagWith tagMappings fc =
+  fc `for` \(Seq begin nodes) -> do
+    newBegin <- M.lookup begin tagMappings
+    Seq newBegin <$> nodes `for` \case
+      Increase c -> Just $ Increase c
+      Decrease c tag -> Decrease c <$> M.lookup tag tagMappings
+      GoTo tag -> GoTo <$> M.lookup tag tagMappings
+
+allCells :: FlowChart tag a -> [a]
+allCells fc =
+  concat $
+    fc <&> \(Seq _ nodes) ->
+      concat $
+        nodes <&> \case
+          Increase c -> [c]
+          Decrease c _ -> [c]
+          _ -> []
+
+allTags :: FlowChart tag a -> [tag]
+allTags fc =
+  concat $
+    fc <&> \(Seq begin nodes) ->
+      (begin :) . concat $
+        nodes <&> \case
+          Decrease _ tag -> [tag]
+          GoTo tag -> [tag]
+          _ -> []

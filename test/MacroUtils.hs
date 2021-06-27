@@ -1,5 +1,6 @@
 module MacroUtils where
 
+import Abacus.Core
 import Abacus.Macro
 import Abacus.Parser
 import Control.Monad.Except
@@ -54,3 +55,11 @@ macroExpansionOf macroIndex macroName =
         & either
           (error . (("Unable to expand macro " ++ T.unpack macroName) ++) . show)
           (Macro macroName params)
+
+compilationOf :: MacroIndex -> MacroName -> FlowChart Integer Integer
+compilationOf macroIndex macroName =
+  compile macroIndex macroName
+    & runExcept
+    & either
+      (error . (("Unable to expand macro " ++ T.unpack macroName) ++) . show)
+      id

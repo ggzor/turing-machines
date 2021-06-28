@@ -42,6 +42,10 @@ copy(x, y):
   dup(x, y, t)
   trans(t, x)
 
+replace(x, y):
+  zero(x)
+  trans(y, x)
+
 sum(x, y, r):
   copy(x, r)
   copy(y, r)
@@ -50,24 +54,23 @@ mult(x, y, r):
   copy(x, i)
   s:
     i- e
-    sum(y, r, acc)
-    trans(acc, r)
+    copy(y, r)
     s
   e:
 
 exp(x, y, r):
-  copy(x, i)
+  copy(y, i)
   r+
   s:
     i- e
     mult(x, r, acc)
-    trans(acc, r)
+    replace(r, acc)
     s
   e:
 
 monus(x, y, r):
-  trans(x, r)
-  trans(y, t)
+  copy(x, r)
+  copy(y, t)
   s:
     t- e
     r- e
@@ -79,13 +82,14 @@ abs_minus(x, y, r):
   monus(x, y, t1)
   monus(y, x, t2)
   sum(t1, t2, r)
+  zero(t1)
+  zero(t2)
 
 sg(x, r):
-  trans(x, t)
-  t- e
+  x- e
   r+
+  x+
   e:
-    zero(t)
 
 sgn(x, r):
   sg(x, s)
@@ -94,7 +98,7 @@ sgn(x, r):
   zero(t)
   zero(s)
 
-rm(x, y, r):
+rm(y, x, r):
   copy(y, c)
   l:
     c- e
@@ -102,7 +106,7 @@ rm(x, y, r):
     abs_minus(x, r, t1)
     sg(t1, t2)
     mult(r, t2, t3)
-    trans(t3, r)
+    replace(r, t3)
 
     zero(t1)
     zero(t2)
@@ -123,6 +127,7 @@ ndiv(x, r):
     div(x, z, r)
     l
   e:
+    zero(z)
 
 equal(x, y, r):
   abs_minus(x, y, t)

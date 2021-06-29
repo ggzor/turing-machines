@@ -4,7 +4,6 @@ import Abacus.Core
 import Control.Monad.State.Strict
 import qualified Data.Map.Strict as M
 import qualified Data.Text as T
-import GHC.IO (unsafePerformIO)
 import TuringMachines.Core
 import qualified TuringMachines.Core as TM
 import qualified TuringMachines.PPrint as PP
@@ -17,134 +16,121 @@ programAsStr = T.unpack . PP.pprint . mapProgram QString
 compile :: FlowChart Integer Integer -> Maybe (TM.Program Integer)
 compile fc =
   let action = do
-        tagIndex <- reserveTags fc
+        tagIndex <- M.fromList <$> fc `forM` \(Seq tag _) -> (tag,) <$> fresh
         M.fromList . concat <$> fc `forM` \(Seq tag nodes) -> do
-          port <- lift $ M.lookup tag tagIndex
-          initial <- fresh
+          qTag <- lift $ M.lookup tag tagIndex
+          qInitial <- fresh
           result <-
             concat <$> nodes `forM` \case
               Increase i -> compileIncrease i
-              Decrease i target -> do
-                targetNode <- lift $ M.lookup target tagIndex
-                compileDecrease i targetNode
-              GoTo target -> do
-                targetNode <- lift $ M.lookup target tagIndex
-                t1 <- prev
+              Decrease i tag -> do
+                target <- lift $ M.lookup tag tagIndex
+                compileDecrease i target
+              GoTo tag -> do
+                target <- lift $ M.lookup tag tagIndex
+                q <- lastQ
+                -- Generate fresh state because current is being used
                 _ <- fresh
-                pure
-                  [
-                    ( t1
-                    , Spec
-                        (Transition (SetTo B0) targetNode)
-                        (Transition (SetTo B1) targetNode)
-                    )
-                  ]
-          let portToInitial =
-                ( port
-                , Spec
-                    (Transition (SetTo B0) initial)
-                    (Transition (SetTo B1) initial)
-                )
-          pure $ portToInitial : result
-      result :: Maybe (TM.Program Integer) = action `evalStateT` QGen 0
-   in (unsafePerformIO . putStrLn . maybe "<Empty>" ((++ "\n") . programAsStr) $ result)
-        `seq` result
+                pure $ compileGoTo q target
+          pure $ compileGoTo qTag qInitial ++ result
+   in action `evalStateT` QGen 0
 
-compileDecrease :: (MonadState QGen m, MonadFail m) => Integer -> Integer -> m [(Integer, Spec Integer)]
-compileDecrease i targetIfZero = do
-  findi <-
-    concat <$> [1 .. (i - 1)] `forM` const do
-      ta <- prev
-      [tb, tc] <- replicateM 2 fresh
-      pure
-        [ (ta, Spec (Transition (SetTo B1) ta) (Transition (MoveTo R) tb))
-        , (tb, Spec (Transition (MoveTo R) tc) (Transition (MoveTo R) tb))
-        ]
-  checkIfZero <- do
-    t1 <- prev
-    [t2, t3] <- replicateM 2 fresh
-    goToStandard <- do
-      t1 <- prev
-      [t2, t3, t4] <- replicateM 3 fresh
-      pure
-        [ (t1, Spec (Transition (MoveTo L) t2) (Transition (MoveTo L) t1))
-        , (t2, Spec (Transition (MoveTo R) t3) (Transition (MoveTo L) t1))
-        , (t3, Spec (Transition (MoveTo R) t4) Halt)
-        ]
-    tendSt <- prev
-    tlast <- fresh
-    pure $
-      concat
-        [
-          [ (t1, Spec (Transition (SetTo B1) t1) (Transition (MoveTo R) t2))
-          , (t2, Spec (Transition (MoveTo L) t3) (Transition (MoveTo R) tlast))
-          ]
-        , goToStandard
-        ,
+compileDecrease :: (MonadState QGen m, MonadFail m) => Integer -> Q -> m NodeSeq
+compileDecrease i qIfZero =
+  let checkIfZero = do
+        q1 <- lastQ
+        [q2, qMoveToLeftmost] <- replicateM 2 fresh
+
+        moveToLeftmostActions <- moveToLeftmost
+        qWhenZero <- lastQ
+
+        qIfNotZero <- fresh
+        pure . concat $
           [
-            ( tendSt
-            , Spec
-                (Transition (SetTo B0) targetIfZero)
-                (Transition (SetTo B1) targetIfZero)
-            )
+            [ (q1, Spec (Transition (SetTo B1) q1) (Transition (MoveTo R) q2))
+            , (q2, Spec (Transition (MoveTo L) qMoveToLeftmost) (Transition (MoveTo R) qIfNotZero))
+            ]
+          , moveToLeftmostActions
+          ,
+            [
+              ( qWhenZero
+              , Spec (Transition (SetTo B0) qIfZero) (Transition (SetTo B1) qIfZero)
+              )
+            ]
           ]
-        ]
-  eraseIfNeeded <- do
-    t1 <- prev
-    [t2, t3, t4, t5] <- replicateM 4 fresh
-    pure
-      [ (t1, Spec (Transition (MoveTo L) t2) (Transition (MoveTo R) t1))
-      , (t2, Spec (Transition (MoveTo R) t3) (Transition (SetTo B0) t2))
-      , (t3, Spec (Transition (SetTo B1) t3) (Transition (MoveTo R) t4))
-      , (t4, Spec (Transition (MoveTo L) t5) (Transition (MoveTo R) t1))
-      ]
-  goToStandard <- do
-    t1 <- prev
-    [t2, t3, t4] <- replicateM 3 fresh
-    pure
-      [ (t1, Spec (Transition (MoveTo L) t2) (Transition (MoveTo L) t1))
-      , (t2, Spec (Transition (MoveTo R) t3) (Transition (MoveTo L) t1))
-      , (t3, Spec (Transition (MoveTo R) t4) Halt)
-      ]
-  pure $
-    findi
-      ++ checkIfZero
-      ++ eraseIfNeeded
-      ++ goToStandard
 
-reserveTags :: (MonadState QGen m) => FlowChart Integer Integer -> m (M.Map Integer Integer)
-reserveTags fc =
-  M.fromList <$> fc `forM` \(Seq tag _) -> (tag,) <$> fresh
+      eraseOneAndDisplaceLeft = do
+        q1 <- lastQ
+        [q2, q3, q4, q5] <- replicateM 4 fresh
+        pure
+          [ (q1, Spec (Transition (MoveTo L) q2) (Transition (MoveTo R) q1))
+          , (q2, Spec (Transition (MoveTo R) q3) (Transition (SetTo B0) q2))
+          , (q3, Spec (Transition (SetTo B1) q3) (Transition (MoveTo R) q4))
+          , (q4, Spec (Transition (MoveTo L) q5) (Transition (MoveTo R) q1))
+          ]
+   in fmap concat . sequence $
+        [ moveToRight i
+        , checkIfZero
+        , eraseOneAndDisplaceLeft
+        , moveToLeftmost
+        ]
+
+compileIncrease :: (MonadState QGen m, MonadFail m) => Integer -> m NodeSeq
+compileIncrease i = do
+  let increaseAndDisplaceRight = do
+        q1 <- lastQ
+        [q2, q3, q4, q5, q6, q7] <- replicateM 6 fresh
+        pure
+          [ (q1, Spec (Transition (SetTo B1) q1) (Transition (MoveTo R) q2))
+          , (q2, Spec (Transition (SetTo B1) q3) (Transition (MoveTo R) q2))
+          , (q3, Spec Halt (Transition (MoveTo R) q4))
+          , (q4, Spec (Transition (MoveTo L) q7) (Transition (SetTo B0) q5))
+          , (q5, Spec (Transition (MoveTo R) q6) Halt)
+          , (q6, Spec (Transition (SetTo B1) q3) (Transition (MoveTo R) q6))
+          ]
+   in fmap concat . sequence $
+        [ moveToRight i
+        , increaseAndDisplaceRight
+        , moveToLeftmost
+        ]
+
+compileGoTo :: Q -> Q -> NodeSeq
+compileGoTo src dest =
+  [(src, Spec (Transition (SetTo B0) dest) (Transition (SetTo B1) dest))]
+
+type Q = Integer
+type SpecLine = (Q, Spec Q)
+type NodeSeq = [SpecLine]
 
 newtype QGen = QGen {unQGen :: Integer}
 
 fresh :: (MonadState QGen m) => m Integer
 fresh = modify' (QGen . (+ 1) . unQGen) >> (unQGen <$> get)
 
-prev :: (MonadState QGen m) => m Integer
-prev = unQGen <$> get
+lastQ :: (MonadState QGen m) => m Integer
+lastQ = unQGen <$> get
 
-compileIncrease :: (MonadState QGen m, MonadFail m) => Integer -> m [(Integer, Spec Integer)]
-compileIncrease i = do
-  findBlankRightToi <-
-    concat <$> [1 .. (i - 1)] `forM` const do
-      ta <- prev
-      [tb, tc] <- replicateM 2 fresh
-      pure
-        [ (ta, Spec (Transition (SetTo B1) ta) (Transition (MoveTo R) tb))
-        , (tb, Spec (Transition (MoveTo R) tc) (Transition (MoveTo R) tb))
-        ]
-  t1 <- prev
-  [t2, t3, t4, t5, t6, t7, t8, t9, t10] <- replicateM 9 fresh
-  pure $
-    findBlankRightToi
-      ++ [ (t1, Spec (Transition (SetTo B1) t1) (Transition (MoveTo R) t2))
-         , (t2, Spec (Transition (SetTo B1) t3) (Transition (MoveTo R) t2))
-         , (t3, Spec Halt (Transition (MoveTo R) t4))
-         , (t4, Spec (Transition (MoveTo L) t7) (Transition (SetTo B0) t5))
-         , (t5, Spec (Transition (MoveTo R) t6) Halt)
-         , (t6, Spec (Transition (SetTo B1) t3) (Transition (MoveTo R) t6))
-         , (t7, Spec (Transition (MoveTo L) t8) (Transition (MoveTo L) t7))
-         , (t8, Spec (Transition (MoveTo R) t9) (Transition (MoveTo L) t7))
-         , (t9, Spec (Transition (MoveTo R) t10) Halt)
-         ]
+-- Moves the machine to the first cell, going from right to left
+-- starting from the rightmost 1 of any cell.
+moveToLeftmost :: (MonadState QGen m, MonadFail m) => m NodeSeq
+moveToLeftmost = do
+  q1 <- lastQ
+  [q2, q3, qfinal] <- replicateM 3 fresh
+  pure
+    [ (q1, Spec (Transition (MoveTo L) q2) (Transition (MoveTo L) q1))
+    , (q2, Spec (Transition (MoveTo R) q3) (Transition (MoveTo L) q1))
+    , (q3, Spec (Transition (MoveTo R) q3) (Transition (SetTo B1) qfinal))
+    ]
+
+-- Moves the machine n cells to the right
+-- starting from the leftmost 1 or 0 of any cell;
+-- substituting B-representation for 1-representation of empty cells
+moveToRight :: (MonadState QGen m, MonadFail m) => Integer -> m NodeSeq
+moveToRight n =
+  concat <$> [1 .. (n - 1)] `forM` const do
+    q1 <- lastQ
+    [q2, qfinal] <- replicateM 2 fresh
+    pure
+      [ (q1, Spec (Transition (SetTo B1) q1) (Transition (MoveTo R) q2))
+      , (q2, Spec (Transition (MoveTo R) qfinal) (Transition (MoveTo R) q2))
+      ]

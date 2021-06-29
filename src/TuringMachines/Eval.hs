@@ -27,3 +27,9 @@ eval program state@(State _ idx tape) =
             MoveTo L -> (idx - 1, tape)
             MoveTo R -> (idx + 1, tape)
        in Just $ State nextQ newIdx newTape
+
+evalFull :: Ord a => Program a -> State a -> State a
+evalFull program = go
+  where
+    go state =
+      maybe state go (eval program state)

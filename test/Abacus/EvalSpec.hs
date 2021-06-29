@@ -89,6 +89,9 @@ inputs =
   where
     cellsToMap = IntMap.fromList . zip [1 ..]
 
+compiledTestMacros :: M.Map MacroName (FlowChart Integer Integer)
+compiledTestMacros = compiledMacrosOf testMacrosSource
+
 appendZeros :: Int -> IntMap Integer -> IntMap Integer
 appendZeros top m =
   let f Nothing = Just 0
@@ -99,17 +102,10 @@ spec :: Spec
 spec =
   describe "eval" $ do
     inputs `forM_` \(macroName, input, output) ->
-      let program = M.lookup macroName testMacros & fromMaybe (error $ "Unknown program: " ++ T.unpack macroName)
+      let program = M.lookup macroName compiledTestMacros & fromMaybe (error $ "Unknown program: " ++ T.unpack macroName)
        in it ("should evaluate " ++ T.unpack macroName ++ " correctly") $
             let result = eval program input
                 maxReg = max (fst . IntMap.findMax $ result) (fst . IntMap.findMax $ output)
                 fixedOut = appendZeros maxReg output
                 fixedResult = appendZeros maxReg result
              in fixedResult `shouldBe` fixedOut
-
-testMacros :: M.Map MacroName (FlowChart Integer Integer)
-testMacros =
-  let macroIndex = createIndexOf testMacrosSource
-      implicits = implicitsOf macroIndex
-      reified = reifyImplicitsOf (macroIndex, implicits)
-   in M.mapWithKey (\name _ -> compilationOf reified name) reified

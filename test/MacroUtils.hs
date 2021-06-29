@@ -63,3 +63,10 @@ compilationOf macroIndex macroName =
     & either
       (error . (("Unable to expand macro " ++ T.unpack macroName) ++) . show)
       id
+
+compiledMacrosOf :: Text -> M.Map MacroName (FlowChart Integer Integer)
+compiledMacrosOf macrosSource =
+  let macroIndex = createIndexOf macrosSource
+      implicits = implicitsOf macroIndex
+      reified = reifyImplicitsOf (macroIndex, implicits)
+   in M.mapWithKey (\name _ -> compilationOf reified name) reified

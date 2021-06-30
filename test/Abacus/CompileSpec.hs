@@ -25,7 +25,9 @@ import TuringMachines.Parser
 
 testMacrosSource :: Text
 testMacrosSource =
-  [r|
+  T.append
+    completeProgramSource
+    [r|
 
 empty_program():
 
@@ -50,23 +52,8 @@ high_numbered_register_decrement():
   10- e
   e:
 
-trans(x, y):
-  s:
-    x- e
-    y+
-    s
-  e:
-
 trans1to3():
   trans(1, 3)
-
-dup(x, y, z):
-  s:
-    x- e
-    y+
-    z+
-    s
-  e:
 
 dup3to1and4():
   dup(3, 1, 4)
@@ -105,6 +92,7 @@ inputs =
   , ("trans1to3", fromNats [3, 2, 0], fromNats [0, 2, 3])
   , ("dup3to1and4", fromNats [0, 0, 1, 0], fromNats [1, 0, 0, 1])
   , ("dup3to1and4", fromNats [0, 2, 3, 0, 4], fromNats [3, 2, 0, 3, 4])
+  , ("sum", fromNats [1, 2, 0], fromNats [1, 2, 3])
   ]
   where
     emptyTape = IntMap.singleton 0 B0

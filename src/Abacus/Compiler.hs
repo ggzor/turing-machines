@@ -17,6 +17,9 @@ compile :: FlowChart Integer Integer -> Maybe (TM.Program Integer)
 compile fc =
   let action = do
         tagIndex <- M.fromList <$> fc `forM` \(Seq tag _) -> (tag,) <$> fresh
+        sequents <-
+          M.fromList <$> zip fc (tail fc) `forM` \(Seq t1 _, Seq t2 _) -> do
+            (t1,) <$> lift (M.lookup t2 tagIndex)
         M.fromList . concat <$> fc `forM` \(Seq tag nodes) -> do
           qTag <- lift $ M.lookup tag tagIndex
           qInitial <- fresh
@@ -32,7 +35,12 @@ compile fc =
                 -- Generate fresh state because current is being used
                 _ <- fresh
                 pure $ compileGoTo q target
-          pure $ compileGoTo qTag qInitial ++ result
+          sequentLink <- case M.lookup tag sequents of
+            Nothing -> pure []
+            Just qNext -> do
+              qLast <- lastQ
+              pure $ compileGoTo qLast qNext
+          pure $ compileGoTo qTag qInitial ++ sequentLink ++ result
    in action `evalStateT` QGen 0
 
 compileDecrease :: (MonadState QGen m, MonadFail m) => Integer -> Q -> m NodeSeq

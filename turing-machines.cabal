@@ -101,6 +101,8 @@ executable turing-machines
   other-modules:
       Parser
     , ParserUtils
+    , Commands.Abacus.Parser
+    , Commands.Abacus.Runner
     , Commands.Eval.Parser
     , Commands.Eval.Runner
     , Commands.Eval.Speculative

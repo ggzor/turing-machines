@@ -5,6 +5,7 @@ import qualified TuringMachines.PPrint as PP
 
 import Data.Text (Text, unpack)
 import qualified Data.Text.IO as TIO
+import System.Console.ANSI
 import System.Exit (exitFailure)
 import Utils.QString
 
@@ -13,5 +14,12 @@ programAsStr = unpack . PP.pprint . mapProgram QString
 
 exitError :: Text -> IO ()
 exitError message = do
-  TIO.putStrLn message
+  printError message
   exitFailure
+
+printError :: Text -> IO ()
+printError err = do
+  setSGR [SetColor Foreground Vivid Red, SetConsoleIntensity BoldIntensity]
+  TIO.putStr "error: "
+  setSGR [Reset]
+  TIO.putStrLn err

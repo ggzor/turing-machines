@@ -1,5 +1,7 @@
 module Main where
 
+import Commands.Abacus.Parser (AbacusCommandOptions (..))
+import Commands.Abacus.Runner (processAbacus)
 import Commands.Eval.Parser (EvalCommandOptions (..))
 import Commands.Eval.Runner (processEval)
 import Commands.Info.Parser (InfoCommandOptions (..))
@@ -17,7 +19,6 @@ import Data.String.Interpolate
 import Data.Text (Text)
 import Options.Applicative hiding (action)
 import RIO (readFileUtf8)
-import System.Console.ANSI
 import System.Directory (doesFileExist)
 import Text.Megaparsec (errorBundlePretty, parse)
 
@@ -40,6 +41,8 @@ doWork (Eval (EvalCommandOptions path input opts)) =
   withExistentFile path \pathText ->
     withValidProgram path pathText \program ->
       processEval opts program input
+doWork (Abacus (AbacusCommandOptions path opts)) =
+  withExistentFile path (`processAbacus` opts)
 
 withExistentFile :: FilePath -> (Text -> IO ()) -> IO ()
 withExistentFile path action = do
@@ -53,8 +56,5 @@ withValidProgram path programText action = do
   case parse TP.pProgram path programText of
     Right program -> action program
     Left err -> do
-      setSGR [SetColor Foreground Vivid Red, SetConsoleIntensity BoldIntensity]
-      putStr "error: "
-      setSGR [Reset]
-      putStrLn "El programa no es válido"
+      printError "El programa no es valido"
       putStr (errorBundlePretty err)

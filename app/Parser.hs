@@ -2,6 +2,7 @@
 
 module Parser where
 
+import Commands.Abacus.Parser
 import Commands.Eval.Parser
 import Commands.Info.Parser
 import Commands.Numbered.Parser
@@ -13,6 +14,7 @@ data Commands
   = Numbered !NumberedCommandOptions
   | Info !InfoCommandOptions
   | Eval !EvalCommandOptions
+  | Abacus !AbacusCommandOptions
 
 options :: Parser Commands
 options =
@@ -23,4 +25,6 @@ options =
         progDesc "Muestra información relevante del programa dado"
     , command "eval" . info (Eval <$> evalCommandOptions <**> helper) $
         progDesc "Evalua el programa con la entrada dada"
+    , command "abacus" . info (Abacus <$> abacusOptions <**> helper) $
+        progDesc "Ejecuta operaciones sobre programas de abaco"
     ]

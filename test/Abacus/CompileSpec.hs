@@ -50,6 +50,27 @@ high_numbered_register_decrement():
   10- e
   e:
 
+trans(x, y):
+  s:
+    x- e
+    y+
+    s
+  e:
+
+trans1to3():
+  trans(1, 3)
+
+dup(x, y, z):
+  s:
+    x- e
+    y+
+    z+
+    s
+  e:
+
+dup3to1and4():
+  dup(3, 1, 4)
+
 |]
 
 compiledTestMacros :: M.Map MacroName (TM.Program Integer)
@@ -73,25 +94,49 @@ inputs =
   , ("simple_decrement", tape "1100", tape "101")
   , ("simple_decrement", tape "111100", tape "11101")
   , ("third_register_decrement", tape "10101100", tape "1010101")
-  , ("third_register_decrement", fromNats [1, 2, 3, 4, 5], fromNats [1, 2, 2, 4, 5, 0])
+  , -- Extra zeros are added because of B-repr to 1-repr conversion
+    ("third_register_decrement", fromNats [1, 2, 3, 4, 5], fromNats [1, 2, 2, 4, 5])
   ,
     ( "high_numbered_register_decrement"
     , fromNats $ replicate 15 7
-    , fromNats $ replicate 9 7 ++ [6] ++ replicate 5 7 ++ [0]
+    , fromNats $ replicate 9 7 ++ [6] ++ replicate 5 7
     )
+  , ("trans1to3", fromNats [1, 0, 0], fromNats [0, 0, 1])
+  , ("trans1to3", fromNats [3, 2, 0], fromNats [0, 2, 3])
+  , ("dup3to1and4", fromNats [0, 0, 1, 0], fromNats [1, 0, 0, 1])
+  , ("dup3to1and4", fromNats [0, 2, 3, 0, 4], fromNats [3, 2, 0, 3, 4])
   ]
   where
-    fromNats :: [Int] -> Tape
-    fromNats =
-      IntMap.fromAscList
-        . zip [0 ..]
-        . L.intercalate [B0]
-        . map \x -> replicate (x + 1) B1
     emptyTape = IntMap.singleton 0 B0
     tape :: Text -> Tape
     tape str =
       str & parseMaybe pTape
         & fromMaybe (error $ "Wrong tape: " ++ T.unpack str)
+
+fromNats :: [Int] -> Tape
+fromNats =
+  IntMap.fromAscList
+    . zip [0 ..]
+    . L.intercalate [B0]
+    . map \x -> replicate (x + 1) B1
+
+toNats :: Tape -> [Int]
+toNats tape =
+  let (minIdx, maxIdx) = tapeBounds tape
+   in L.dropWhileEnd (== 0)
+        . map ((+ (-1)) . length)
+        . filter \case
+          '1' : _ -> True
+          _ -> False
+        . L.group
+        . tapeSlice minIdx maxIdx
+        $ tape
+
+tapeBounds :: Tape -> (Int, Int)
+tapeBounds tape =
+  if IntMap.null tape
+    then (0, 0)
+    else (fst $ IntMap.findMin tape, fst $ IntMap.findMax tape)
 
 spec :: H.Spec
 spec =
@@ -107,10 +152,14 @@ spec =
               should run correctly #{macroName} with input "#{adjustedInput}"
             |]
               $ let (State _ _ result) = evalFull program (State 1 0 input)
-                    minIdx = min (fst $ IntMap.findMin result) (fst $ IntMap.findMin output)
-                    maxIdx = max (fst $ IntMap.findMax result) (fst $ IntMap.findMax output)
-                    adjustedResult = tapeSlice minIdx maxIdx result
-                    adjustedOutput = tapeSlice minIdx maxIdx output
+                    normResult = fromNats . toNats $ result
+                    normOutput = fromNats . toNats $ output
+                    (minResult, maxResult) = tapeBounds normResult
+                    (minOutput, maxOutput) = tapeBounds normOutput
+                    minIdx = min minResult minOutput
+                    maxIdx = max maxResult maxOutput
+                    adjustedResult = tapeSlice minIdx maxIdx normResult
+                    adjustedOutput = tapeSlice minIdx maxIdx normOutput
                  in adjustedResult `shouldBe` adjustedOutput
 
 tapeSlice :: Int -> Int -> Tape -> String

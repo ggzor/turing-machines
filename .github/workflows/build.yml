@@ -14,14 +14,11 @@ jobs:
       fail-fast: true
 
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macOS-latest]
 
     steps:
       - uses: actions/checkout@v2
-      - name: Cache install nix packages
-        uses: rikhuijzer/cache-install@v1.0.8
-        with:
-          key: nix-${{ hashFiles('nix/sources.json') }}
+      - uses: cachix/install-nix-action@v13
       - name: Build with nix
         run: nix-build
       - name: Upload artifacts

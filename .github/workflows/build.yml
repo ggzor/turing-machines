@@ -1,0 +1,32 @@
+name: build
+
+defaults:
+  run:
+    shell: bash
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: true
+
+      matrix:
+        os: [ubuntu-latest, macOS-latest]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache install nix packages
+        uses: rikhuijzer/cache-install@v1
+        with:
+          key: nix-${{ hashFiles('nix/sources.json') }}
+      - name: Build with nix
+        run: nix-build
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: turing-machines-${{ runner.OS }}
+          path: result/bin/turing-machines
+

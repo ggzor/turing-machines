@@ -23,7 +23,10 @@ in {
       compilerSet.cabal-install
       haskellPackages.fourmolu
       haskell-language-server
-      patchelf
     ];
+  };
+  patchelf = compilerSet.shellFor {
+    packages = p: [];
+    buildInputs = [ pkgs.patchelf ];
   };
 }

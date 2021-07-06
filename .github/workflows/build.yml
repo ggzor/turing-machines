@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
 
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macOS-latest]
     env:
       BIN_NAME: turing-machines
     steps:

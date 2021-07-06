@@ -4,7 +4,9 @@ defaults:
   run:
     shell: bash
 
-on: [push]
+on:
+  push:
+    tags: ['v*']
 
 jobs:
   build:
@@ -40,4 +42,23 @@ jobs:
         with:
           name: turing-machines-${{ runner.OS }}
           path: ${{ env.BIN_NAME }}
+
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [Linux, macOS]
+    env:
+      TARGET_NAME: turing-machines-${{ matrix.os }}
+    steps:
+      - uses: actions/download-artifact@v2
+        with:
+          name: ${{ env.TARGET_NAME }}
+      - run: mv turing-machines ${{ env.TARGET_NAME }}
+      - uses: ncipollo/release-action@v1
+        with:
+          artifacts: ${{ env.TARGET_NAME }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          allowUpdates: true
 

@@ -32,7 +32,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           cp "result/bin/$BIN_NAME" "$BIN_NAME"
-          ls -al
+          chmod u+w "$BIN_NAME"
           nix-shell patchelf.nix --run \
             "patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 '$BIN_NAME'"
       - name: Upload artifacts

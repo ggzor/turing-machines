@@ -31,11 +31,12 @@ jobs:
       - name: Patch Linux binary
         if: matrix.os == 'ubuntu-latest'
         run: |
+          cp "result/bin/$BIN_NAME" "$BIN_NAME"
           nix-shell patchelf.nix --run \
             "patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 '$BIN_NAME'"
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: turing-machines-${{ runner.OS }}
-          path: result/bin/turing-machines
+          path: ${{ env.BIN_NAME }}
 

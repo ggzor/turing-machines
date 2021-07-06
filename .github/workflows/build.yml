@@ -15,12 +15,24 @@ jobs:
 
       matrix:
         os: [ubuntu-latest, macOS-latest]
-
+    env:
+      BIN_NAME: turing-machines
     steps:
       - uses: actions/checkout@v2
       - uses: cachix/install-nix-action@v13
       - name: Build with nix
         run: nix-build
+      - name: Patch macOS binary
+        if: matrix.os == 'macOS-latest'
+        run: |
+          cp "result/bin/$BIN_NAME" "$BIN_NAME"
+          LIBFFI_NIX=$(otool -l "$BIN_NAME" | grep libffi | awk '{print $2}')
+          install_name_tool -change "$LIBFFI_NIX" '@loader_path/libffi.dylib' "$BIN_NAME"
+      - name: Patch Linux binary
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          nix-shell -p patchelf --run \
+            "patchelf --set-interpreter /lib64/ld-linux-x86-64.so.2 '$BIN_NAME'"
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:

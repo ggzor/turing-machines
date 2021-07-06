@@ -20,10 +20,13 @@ import Data.Text (Text)
 import Options.Applicative hiding (action)
 import RIO (readFileUtf8)
 import System.Directory (doesFileExist)
+import System.Environment
 import Text.Megaparsec (errorBundlePretty, parse)
 
 main :: IO ()
-main = doWork =<< execParser opts
+main = do
+  setEnv "LC_ALL" "C.UTF-8"
+  doWork =<< execParser opts
   where
     opts =
       info

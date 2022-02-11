@@ -14,5 +14,5 @@ jobs:
       - uses: docker-practice/actions-setup-docker@master
       - name: Run container build script
         run: |
-          ./build/build.sh
+          ./build/run-container.sh
 

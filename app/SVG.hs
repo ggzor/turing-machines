@@ -89,7 +89,7 @@ printImage renderSettings program pState = do
         )
   case result of
     Just newDoc -> do
-      tempPath <- emptySystemTempFile "turing-machines.png"
+      tempPath <- emptySystemTempFile "turing-machine.png"
       runProcess_ . setStdin (encodeAsInput newDoc) $
         proc "rsvg-convert" ["-o", tempPath]
       pure $ Just tempPath

@@ -10,7 +10,7 @@ let
     packageOverrides = super: let self = super.pkgs; in rec {
       haskell = super.haskell // {
         packageOverrides = self: super: {
-          turing-machines = super.callCabal2nix "turing-machines" (gitIgnore [./.gitignore] ./.) {};
+          turing-machine = super.callCabal2nix "turing-machine" (gitIgnore [./.gitignore] ./.) {};
         };
       };
     };
@@ -18,7 +18,7 @@ let
 in {
   inherit pkgs;
   shell = compilerSet.shellFor {
-    packages = p: [p.turing-machines];
+    packages = p: [p.turing-machine];
     buildInputs = with pkgs; [
       compilerSet.cabal-install
       haskellPackages.fourmolu

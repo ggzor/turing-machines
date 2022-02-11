@@ -1,6 +1,6 @@
 cabal-version:       2.4
 
-name:                turing-machines
+name:                turing-machine
 version:             0.0.1
 license:             BSD-3-Clause
 license-file:        LICENSE
@@ -94,7 +94,7 @@ library
     , string-interpolate
     , text
 
-executable turing-machines
+executable turing-machine
   import:              shared-properties
   hs-source-dirs:      app
   main-is:             Main.hs
@@ -114,7 +114,7 @@ executable turing-machines
     , Graphviz
     , Utils
   build-depends:
-      turing-machines
+      turing-machine
     , ansi-terminal
     , base
     , containers
@@ -132,13 +132,13 @@ executable turing-machines
     , xml-conduit
     , xml-lens
 
-test-suite turing-machines-test
+test-suite turing-machine-test
   import:              shared-properties
   hs-source-dirs:      test
   main-is:             Spec.hs
   other-modules:       Utils
   build-depends:
-      turing-machines
+      turing-machine
     , base
     , containers
     , hspec

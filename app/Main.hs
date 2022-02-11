@@ -32,7 +32,7 @@ main = do
       info
         (options <**> helper)
         ( fullDesc
-            <> header "turing-machines - Un interprete de maquinas de Turing"
+            <> header "turing-machine - Un interprete de maquinas de Turing"
         )
 
 doWork :: Commands -> IO ()

@@ -1,1 +1,1 @@
-(import ./project.nix).pkgs.haskellPackages.turing-machines
+(import ./project.nix).pkgs.haskellPackages.turing-machine

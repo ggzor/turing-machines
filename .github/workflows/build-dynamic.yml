@@ -21,7 +21,7 @@ jobs:
       BIN_NAME: turing-machine
     steps:
       - uses: actions/checkout@v2
-      - uses: cachix/install-nix-action@v13
+      - uses: cachix/install-nix-action@v15
       - name: Build with nix
         run: nix-build
       - name: Patch macOS binary

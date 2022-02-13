@@ -6,6 +6,7 @@ import Commands.Eval.Parser (EvalOptions (EvalOptions))
 import qualified Commands.Eval.Parser as P
 import Commands.Eval.Speculative
 
+import Control.Applicative ((<|>))
 import Control.Lens (makeLenses, preview, use, view, (%=), (+=), (^.), _Just)
 import Control.Monad (foldM, void)
 import Control.Monad.IO.Class (liftIO)
@@ -84,7 +85,7 @@ processEval
     let initialIdx = 0
     let initialState = State initialQ initialIdx tape
 
-    let speculativeData = speculativeEval program initialState limitSteps
+    let speculativeData = speculativeEval program initialState (limitSteps <|> Just 10000)
     let adjustedTape =
           let minIdx = speculativeData ^. minimumIdx
               maxIdx = speculativeData ^. maximumIdx

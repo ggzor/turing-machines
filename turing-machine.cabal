@@ -1,7 +1,7 @@
 cabal-version:       2.4
 
 name:                turing-machine
-version:             0.0.5
+version:             0.0.6
 license:             BSD-3-Clause
 license-file:        LICENSE
 author:              ggzor

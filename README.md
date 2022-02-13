@@ -23,7 +23,7 @@ El programa pre-compilado se encuentra en la sección de Releases.
 
 ```bash
 # Descargar la última versión, también sirve para actualizarlo.
-curl -fLO 'https://github.com/ggzor/turing-machines/releases/latest/download/turing-machine'
+curl -fLo turing-machine 'https://github.com/ggzor/turing-machines/releases/latest/download/turing-machine-Linux'
 # Permitir ejecutar el binario
 chmod u+x turing-machine
 ./turing-machine --help
@@ -59,7 +59,7 @@ Y después:
 
 ```bash
 # Descargar la última versión del binario dinámico
-curl -fLO 'https://github.com/ggzor/turing-machines/releases/latest/download/turing-machine-macOS'
+curl -fLo turing-machine 'https://github.com/ggzor/turing-machines/releases/latest/download/turing-machine-macOS'
 chmod u+x turing-machine
 ./turing-machine --help
 ```

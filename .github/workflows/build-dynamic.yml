@@ -25,13 +25,13 @@ jobs:
       - name: Build with nix
         run: nix-build
       - name: Patch macOS binary
-        if: matrix.os == 'macOS-latest'
+        if: runner.OS == 'macOS'
         run: |
           cp "result/bin/$BIN_NAME" "$BIN_NAME"
           LIBFFI_NIX=$(otool -l "$BIN_NAME" | grep libffi | awk '{print $2}')
           install_name_tool -change "$LIBFFI_NIX" '@loader_path/libffi.dylib' "$BIN_NAME"
       - name: Patch Linux binary
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.OS == 'Linux'
         run: |
           cp "result/bin/$BIN_NAME" "$BIN_NAME"
           chmod u+w "$BIN_NAME"

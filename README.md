@@ -33,6 +33,9 @@ chmod u+x turing-machine
 > Linux. En caso de no tenerlo instalado, cualquier otro método de descarga del ejecutable
 > es válido.
 
+> Nota para usuarios de Windows: Para acceder a los archivos desde el explorador se puede seguir
+> este [tutorial](https://geekland.eu/acceder-a-los-ficheros-linux-de-wsl-desde-windows-10/).
+
 Para la generación de los gráfos es necesario instalar 
 [graphviz](https://graphviz.org/download/) y 
 [rsvg-convert](https://command-not-found.com/rsvg-convert), con los comandos que se

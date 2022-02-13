@@ -150,7 +150,9 @@ processEval' program state@(State _ idx _) = do
         Just path ->
           liftIO $ copyFile path targetImage
     DirectoryOut dir -> case generatedImage of
-      Nothing -> pure ()
+      Nothing ->
+        liftIO . exitError $
+          "No se pudo generar la imagen, es posible que graphviz no esté instalado."
       Just path -> do
         totalSteps <- preview $ speculativeData . _Just . totalSteps
         liftIO do

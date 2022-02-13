@@ -18,11 +18,13 @@ import qualified Data.Text.Lazy as TL
 import Data.Text.Utils (tshow)
 import Graphviz
 import RIO (view, (%~), (.~), (^.))
+import System.Exit (ExitCode (ExitFailure, ExitSuccess))
 import System.IO.Temp (emptySystemTempFile)
 import System.Process.Typed
 import Text.RawString.QQ
 import Text.XML (def, parseText, renderText)
 import Text.XML.Lens
+import Utils (exitError)
 
 data RenderOptions = RenderOptions
   { _tapeHeight :: !Int
@@ -90,9 +92,17 @@ printImage renderSettings program pState = do
   case result of
     Just newDoc -> do
       tempPath <- emptySystemTempFile "turing-machine.png"
-      runProcess_ . setStdin (encodeAsInput newDoc) $
-        proc "rsvg-convert" ["-o", tempPath]
-      pure $ Just tempPath
+      readProcessMaybe "rsvg-convert --help" "" >>= \case
+        Just _ -> do
+          code <-
+            runProcess . setStdin (encodeAsInput newDoc) $
+              proc "rsvg-convert" ["-o", tempPath]
+          case code of
+            ExitSuccess -> pure ()
+            ExitFailure _ ->
+              exitError "No se pudo procesar la imagen con rsvg-convert"
+          pure $ Just tempPath
+        Nothing -> exitError "rsvg-convert no está instalado"
     Nothing -> putStrLn "Failed to process document" >> pure Nothing
 
 computedRenderOptionsFor :: RenderOptions -> GraphRenderData -> ComputedRenderOptions

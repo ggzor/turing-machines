@@ -12,7 +12,7 @@ import Utils.QString
 programAsStr :: Program Integer -> String
 programAsStr = unpack . PP.pprint . mapProgram QString
 
-exitError :: Text -> IO ()
+exitError :: Text -> IO a
 exitError message = do
   printError message
   exitFailure
